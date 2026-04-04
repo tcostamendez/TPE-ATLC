@@ -1,10 +1,10 @@
-[![✗](https://img.shields.io/badge/Release-v2.0.0-ffb600.svg?style=for-the-badge)](https://github.com/agustin-golmar/Flex-Bison-Compiler/releases)
+[![✗](https://img.shields.io/badge/Release-v2.0.0-ffb600.svg?style=for-the-badge)](https://github.com/tcostamendez/TPE-ATLC/releases)
 
-[![✗](https://github.com/agustin-golmar/Flex-Bison-Compiler/actions/workflows/pipeline.yaml/badge.svg?branch=production)](https://github.com/agustin-golmar/Flex-Bison-Compiler/actions/workflows/pipeline.yaml)
+[![✗](https://github.com/tcostamendez/TPE-ATLC/actions/workflows/pipeline.yaml/badge.svg?branch=production)](https://github.com/tcostamendez/TPE-ATLC/actions/workflows/pipeline.yaml)
 
-# Flex-Bison-Compiler
+# TPE-ATLC
 
-A base compiler example, developed with Flex and Bison.
+A compiler project for ATLC, developed in C with Flex and Bison.
 
 * [Requirements](#requirements)
 * [Configuration](#configuration)
