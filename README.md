@@ -4,35 +4,88 @@
 
 # TPE-ATLC
 
-A compiler project for ATLC, developed in C with Flex and Bison.
+ATLC compiler project developed in C with Flex and Bison. The current repository state corresponds to **Stage 2 (Frontend)** of the project: lexical analysis, syntactic analysis and AST construction for a hardware-description DSL for synchronous sequential boolean circuits.
 
+* [Stage 2 Scope](#stage-2-scope)
+* [Language Overview](#language-overview)
 * [Requirements](#requirements)
 * [Configuration](#configuration)
 * [Commands](#commands)
+* [Tests](#tests)
+* [Documentation](#documentation)
 * [CI/CD](#cicd)
 * [Recommended Extensions](#recommended-extensions)
 
+## Stage 2 Scope
+
+This deliverable implements:
+
+* lexical analysis with Flex
+* syntactic analysis with Bison
+* AST construction for valid programs
+* parser-oriented accept/reject tests
+
+This deliverable does **not** implement yet:
+
+* semantic analysis
+* symbol tables
+* instance interface validation
+* combinational cycle detection
+* simulation
+* code generation
+
+The backend modules are intentionally kept as stubs so the compiler pipeline remains wired while Stage 2 stops after AST construction.
+
+## Language Overview
+
+The Stage 2 frontend recognizes programs composed of one or more `circuit` definitions with:
+
+* declarations: `input`, `output`, `wire`, `reg`
+* combinational assignments with `=`
+* sequential blocks with `on rising_edge(clk) { ... }`
+* sequential assignments with `<=`
+* boolean expressions using `not`, `and`, `xor`, `or`
+* subcircuit instantiation with `CircuitName(...) -> (...);`
+
+Example:
+
+```txt
+circuit Register1 {
+input in, load, clk;
+output out;
+reg value;
+wire next;
+
+out = value;
+next = (load and in) or ((not load) and value);
+
+on rising_edge(clk) {
+	value <= next;
+}
+}
+```
+
 ## Requirements
 
-* [Docker v28.3.2](https://www.docker.com/)
+* [Docker](https://www.docker.com/)
+
+The intended build and test environment is the Docker setup shipped with the repository. This is especially important because the host environment may contain an older `bison` or may not have `cmake` installed.
 
 ## Configuration
 
-Set the following environment variables to control and configure the behaviour of the application:
+Set the following environment variables to control the compiler behaviour:
 
-| Name                  | Default | Description                                                                                                                                                           |
-| :-------------------- | :-----: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ENVIRONMENT`         | `Local` | The active environment name. The available environments are: `Local`, `Development` and `Production`.                                                                 |
-| `LOG_IGNORED_LEXEMES` | `true`  | When `true`, logs all of the ignored lexemes found with Flex at `DEBUGGING` level. To remove those logs from the console output set it to `false`.                    |
-| `LOGGING_LEVEL`       | `ALL`   | The minimum level to log in the console output. From lower to higher, the available levels are: `ALL`, `DEBUGGING`, `INFORMATION`, `WARNING`, `ERROR` and `CRITICAL`. |
+| Name                  | Default | Description |
+| :-------------------- | :-----: | :---------- |
+| `ENVIRONMENT`         | `Local` | Active environment name. Available values: `Local`, `Development`, `Production`. |
+| `LOG_IGNORED_LEXEMES` | `true`  | When `true`, ignored lexemes are logged at `DEBUGGING` level. |
+| `LOGGING_LEVEL`       | `ALL`   | Minimum logging level. Available values: `ALL`, `DEBUGGING`, `INFORMATION`, `WARNING`, `ERROR`, `CRITICAL`. |
 
-_Docker Compose_ can read the variables from an `.env` file too (see `compose.yaml` file).
+`docker compose` can also read these values from an `.env` file.
 
 ## Commands
 
-### Start
-
-Rises an ephemeral container, ready to start development:
+### Start a development container
 
 ```bash
 docker compose run --rm compiler
@@ -40,7 +93,7 @@ docker compose run --rm compiler
 
 ### Build
 
-Builds or rebuilds the entire compiler:
+Regenerates parser/scanner sources and builds the compiler:
 
 ```bash
 src/main/bash/build.sh
@@ -48,17 +101,20 @@ src/main/bash/build.sh
 
 ### Run
 
-Compiles a program:
+Compiles a single input program from standard input:
 
 ```bash
 src/main/bash/run.sh <program>
 ```
 
-where `<program>` is the path to the file that represents its entry-point.
+The executable returns:
+
+* `0` when the frontend accepts the program and builds an AST
+* non-zero when lexical or syntactic analysis rejects the program
 
 ### Test
 
-Executes every available unit-test under `src/test/c` folder:
+Runs the Stage 2 acceptance/rejection suite:
 
 ```bash
 src/main/bash/test.sh
@@ -66,33 +122,36 @@ src/main/bash/test.sh
 
 ### Stop
 
-Logout, destroy the ephemeral containers and shutdowns the cluster:
-
 ```bash
 exit
 docker compose down
 ```
 
-### Docker
+## Tests
 
-| Command                                 | Description                                             |
-| :-------------------------------------- | :------------------------------------------------------ |
-| `docker builder prune --all`            | Removes all builds and complete build cache.            |
-| `docker compose --progress=plain build` | Forces a build or rebuild of the images in the cluster. |
-| `docker image prune`                    | Removes all of the dangling images from Docker.         |
-| `docker network prune`                  | Removes unused networks from Docker.                    |
-| `docker volume prune`                   | Removes unused volumes from Docker.                     |
+The test suite under `src/test/c` is syntax-oriented only.
+
+* `src/test/c/accept`: valid programs that must reach AST construction
+* `src/test/c/reject`: invalid programs that must fail in the frontend
+* `*.stderr`: expected diagnostic fragments for selected failure cases
+
+Stage 2 may still accept programs that are semantically invalid, because semantic validation belongs to Stage 3.
+
+## Documentation
+
+* Stage 1 specification: [doc/Especificacion-Stage1.pdf](doc/Especificacion-Stage1.pdf)
+* Stage 2 implementation notes: [doc/Stage2-Frontend.md](doc/Stage2-Frontend.md)
 
 ## CI/CD
 
-To trigger an automatic integration on every push or PR (_Pull Request_), you must activate _GitHub Actions_ in the _Settings_ tab. Use the following configuration:
+To trigger automatic integration on push or pull requests, activate GitHub Actions in the repository settings and configure:
 
-| Key                                                        | Value                                               |
-| :--------------------------------------------------------- | :-------------------------------------------------- |
-| `Actions permissions`                                      | `Allow all actions and reusable workflows`          |
-| `Allow GitHub Actions to create and approve pull requests` | `false`                                             |
-| `Artifact and log retention`                               | `30 days`                                           |
-| `Fork pull request workflows from outside collaborators`   | `Require approval for all outside collaborators`    |
+| Key                                                        | Value |
+| :--------------------------------------------------------- | :---- |
+| `Actions permissions`                                      | `Allow all actions and reusable workflows` |
+| `Allow GitHub Actions to create and approve pull requests` | `false` |
+| `Artifact and log retention`                               | `30 days` |
+| `Fork pull request workflows from outside collaborators`   | `Require approval for all outside collaborators` |
 | `Workflow permissions`                                     | `Read repository contents and packages permissions` |
 
 ## Recommended Extensions

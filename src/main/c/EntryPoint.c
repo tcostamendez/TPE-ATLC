@@ -20,8 +20,7 @@ const int main(const int length, const char ** arguments) {
 		logDebugging(logger, "Argument %d: \"%s\"", k, arguments[k]);
 	}
 	CompilerState compilerState = {
-		.abstractSyntaxtTree = NULL,
-		.value = 0
+		.abstractSyntaxTree = NULL
 	};
 	ModuleDestructor moduleDestructors[] = {
 		initializeAbstractSyntaxTreeModule(),
@@ -32,25 +31,21 @@ const int main(const int length, const char ** arguments) {
 		initializeGeneratorModule()
 	};
 	CompilationStatus compilationStatus = executeSyntacticAnalysis();
-	Program * program = compilerState.abstractSyntaxtTree;
-	if (compilationStatus == SUCCEEDED) {
-		// ----------------------------------------------------------------------------------------
-		// Beginning of the Backend... ------------------------------------------------------------
-		logDebugging(logger, "Computing expression value...");
+	Program * program = compilerState.abstractSyntaxTree;
+	if (compilationStatus == SUCCEEDED && program != NULL) {
+		logDebugging(logger, "Frontend accepted the input program.");
+		logDebugging(logger, "Stage 2 ends after AST construction; semantic analysis belongs to stage 3.");
 		ComputationResult computationResult = executeCalculator(&compilerState);
 		if (computationResult.succeeded) {
-			compilerState.value = computationResult.value;
 			executeGenerator(&compilerState);
 		}
 		else {
-			logError(logger, "The computation phase rejects the input program.");
+			logError(logger, "The stage 2 stubs could not confirm the AST hand-off.");
 			compilationStatus = FAILED;
 		}
-		// ...end of the Backend. -----------------------------------------------------------------
-		// ----------------------------------------------------------------------------------------
 	}
 	else {
-		logError(logger, "The syntactic-analysis phase rejects the input program.");
+		logError(logger, "The frontend rejects the input program.");
 		compilationStatus = FAILED;
 	}
 	logDebugging(logger, "Releasing AST resources...");

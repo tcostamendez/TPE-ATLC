@@ -8,71 +8,173 @@
 /** Initialize module's internal state. */
 ModuleDestructor initializeAbstractSyntaxTreeModule();
 
-/**
- * This type definitions allows self-referencing types (e.g., an expression
- * that is made of another expressions, such as talking about you in 3rd
- * person, but without the madness).
- */
-
+typedef enum DeclarationType DeclarationType;
+typedef enum CircuitItemType CircuitItemType;
+typedef enum StatementType StatementType;
+typedef enum UnaryOperatorType UnaryOperatorType;
+typedef enum BinaryOperatorType BinaryOperatorType;
 typedef enum ExpressionType ExpressionType;
-typedef enum FactorType FactorType;
 
-typedef struct Constant Constant;
+typedef struct IdentifierList IdentifierList;
+typedef struct Connection Connection;
+typedef struct ConnectionList ConnectionList;
+typedef struct Declaration Declaration;
 typedef struct Expression Expression;
-typedef struct Factor Factor;
+typedef struct SequentialAssignment SequentialAssignment;
+typedef struct SequentialAssignmentList SequentialAssignmentList;
+typedef struct ClockBlock ClockBlock;
+typedef struct Instance Instance;
+typedef struct Statement Statement;
+typedef struct CircuitItem CircuitItem;
+typedef struct CircuitItemList CircuitItemList;
+typedef struct Circuit Circuit;
+typedef struct CircuitList CircuitList;
 typedef struct Program Program;
 
-/**
- * Node types for the Abstract Syntax Tree (AST).
- */
+enum DeclarationType {
+	INPUT_DECLARATION,
+	OUTPUT_DECLARATION,
+	WIRE_DECLARATION,
+	REG_DECLARATION
+};
+
+enum CircuitItemType {
+	DECLARATION_ITEM,
+	STATEMENT_ITEM
+};
+
+enum StatementType {
+	COMBINATIONAL_ASSIGNMENT_STATEMENT,
+	CLOCK_BLOCK_STATEMENT,
+	INSTANCE_STATEMENT
+};
+
+enum UnaryOperatorType {
+	NOT_OPERATOR
+};
+
+enum BinaryOperatorType {
+	AND_OPERATOR,
+	OR_OPERATOR,
+	XOR_OPERATOR
+};
 
 enum ExpressionType {
-	ADDITION,
-	DIVISION,
-	FACTOR,
-	MULTIPLICATION,
-	SUBTRACTION
+	IDENTIFIER_EXPRESSION,
+	UNARY_EXPRESSION,
+	BINARY_EXPRESSION
 };
 
-enum FactorType {
-	CONSTANT,
-	EXPRESSION
+struct IdentifierList {
+	char * identifier;
+	IdentifierList * next;
 };
 
-struct Constant {
-	int value;
+struct Connection {
+	char * portName;
+	char * signalName;
 };
 
-struct Factor {
-	union {
-		Constant * constant;
-		Expression * expression;
-	};
-	FactorType type;
+struct ConnectionList {
+	Connection * connection;
+	ConnectionList * next;
+};
+
+struct Declaration {
+	DeclarationType type;
+	IdentifierList * identifiers;
 };
 
 struct Expression {
+	ExpressionType type;
 	union {
-		Factor * factor;
+		char * identifier;
 		struct {
+			UnaryOperatorType unaryOperator;
+			Expression * operand;
+		};
+		struct {
+			BinaryOperatorType binaryOperator;
 			Expression * leftExpression;
 			Expression * rightExpression;
 		};
 	};
-	ExpressionType type;
 };
 
-struct Program {
+struct SequentialAssignment {
+	char * target;
 	Expression * expression;
 };
 
-/**
- * Node recursive super-duper-trambolik-destructors.
- */
+struct SequentialAssignmentList {
+	SequentialAssignment * assignment;
+	SequentialAssignmentList * next;
+};
 
-void destroyConstant(Constant * constant);
+struct ClockBlock {
+	char * clockSignal;
+	SequentialAssignmentList * assignments;
+};
+
+struct Instance {
+	char * circuitName;
+	ConnectionList * inputConnections;
+	ConnectionList * outputConnections;
+};
+
+struct Statement {
+	StatementType type;
+	union {
+		struct {
+			char * target;
+			Expression * expression;
+		} combinationalAssignment;
+		ClockBlock * clockBlock;
+		Instance * instance;
+	};
+};
+
+struct CircuitItem {
+	CircuitItemType type;
+	union {
+		Declaration * declaration;
+		Statement * statement;
+	};
+};
+
+struct CircuitItemList {
+	CircuitItem * item;
+	CircuitItemList * next;
+};
+
+struct Circuit {
+	char * name;
+	CircuitItemList * items;
+};
+
+struct CircuitList {
+	Circuit * circuit;
+	CircuitList * next;
+};
+
+struct Program {
+	CircuitList * circuits;
+};
+
+void destroyIdentifierList(IdentifierList * identifierList);
+void destroyConnection(Connection * connection);
+void destroyConnectionList(ConnectionList * connectionList);
+void destroyDeclaration(Declaration * declaration);
 void destroyExpression(Expression * expression);
-void destroyFactor(Factor * factor);
+void destroySequentialAssignment(SequentialAssignment * assignment);
+void destroySequentialAssignmentList(SequentialAssignmentList * assignmentList);
+void destroyClockBlock(ClockBlock * clockBlock);
+void destroyInstance(Instance * instance);
+void destroyStatement(Statement * statement);
+void destroyCircuitItem(CircuitItem * item);
+void destroyCircuitItemList(CircuitItemList * itemList);
+void destroyCircuit(Circuit * circuit);
+void destroyCircuitList(CircuitList * circuitList);
 void destroyProgram(Program * program);
 
 #endif

@@ -58,21 +58,25 @@ InputBuffer * createInputBuffer(LexicalAnalyzer * lexicalAnalyzer, const char * 
 
 LexicalAnalyzer * createLexicalAnalyzer() {
 	LexicalAnalyzer * lexicalAnalyzer = (LexicalAnalyzer *) calloc(1, sizeof(LexicalAnalyzer));
+	lexicalAnalyzer->column = 1;
 	lexicalAnalyzer->location = calloc(1, sizeof(YYLTYPE));
 	lexicalAnalyzer->logger = createLogger("LexicalAnalyzer");
 	yylex_init(&lexicalAnalyzer->scanner);
 	lexicalAnalyzer->parser = yypstate_new();
+	yyset_lineno(1, lexicalAnalyzer->scanner);
 	flexEnterContext(lexicalAnalyzer, 0);
 	return lexicalAnalyzer;
 }
 
 Token * createToken(LexicalAnalyzer * lexicalAnalyzer, TokenLabel label) {
 	Token * token = (Token *) calloc(1, sizeof(Token));
+	YYLTYPE * location = (YYLTYPE *) lexicalAnalyzer->location;
 	token->context = flexCurrentContext(lexicalAnalyzer);
 	token->label = label;
 	token->length = yyget_leng(lexicalAnalyzer->scanner);
 	token->lexeme = (char *) calloc(token->length + 1, sizeof(char));
 	token->line = yyget_lineno(lexicalAnalyzer->scanner);
+	token->column = location != NULL ? location->first_column : lexicalAnalyzer->column;
 	token->semanticValue = (SemanticValue *) calloc(1, sizeof(SemanticValue));
 	strncpy(token->lexeme, yyget_text(lexicalAnalyzer->scanner), token->length);
 	return token;

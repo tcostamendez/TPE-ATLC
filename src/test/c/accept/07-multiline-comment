@@ -1,4 +1,8 @@
 /*
-	A multiline comment.
+	A multiline comment should be ignored by the scanner.
 */
-0
+circuit Buffer {
+input a;
+output y;
+y = a;
+}

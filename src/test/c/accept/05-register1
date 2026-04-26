@@ -1,0 +1,11 @@
+circuit Register1 {
+input in, load, clk;
+output out;
+reg value;
+wire next;
+out = value;
+next = (load and in) or ((not load) and value);
+on rising_edge(clk) {
+value <= next;
+}
+}
