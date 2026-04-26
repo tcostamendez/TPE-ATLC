@@ -63,7 +63,15 @@ LexicalAnalyzer * createLexicalAnalyzer() {
 	lexicalAnalyzer->logger = createLogger("LexicalAnalyzer");
 	yylex_init(&lexicalAnalyzer->scanner);
 	lexicalAnalyzer->parser = yypstate_new();
+	yyset_in(stdin, lexicalAnalyzer->scanner);
+	yyset_out(stdout, lexicalAnalyzer->scanner);
+	yyrestart(stdin, lexicalAnalyzer->scanner);
 	yyset_lineno(1, lexicalAnalyzer->scanner);
+	YYLTYPE * location = (YYLTYPE *) lexicalAnalyzer->location;
+	location->first_line = 1;
+	location->first_column = 1;
+	location->last_line = 1;
+	location->last_column = 1;
 	flexEnterContext(lexicalAnalyzer, 0);
 	return lexicalAnalyzer;
 }
@@ -161,6 +169,9 @@ CompilationStatus executeSyntacticAnalysis() {
 	CompilationStatus status = IN_PROGRESS;
 	while (status == IN_PROGRESS) {
 		status = executeLexicalAnalysis(_lexicalAnalyzer);
+	}
+	if (status == OUT_OF_MEMORY) {
+		logError(_logger, "The parser reported an out-of-memory condition while processing the input stream.");
 	}
 	logDebugging(_logger, "Compilation status: %s.", _compilationStatusAsString(status));
 	logDebugging(_logger, "Parsing is done.");
