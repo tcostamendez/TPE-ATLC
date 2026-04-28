@@ -68,6 +68,7 @@ enum ExpressionType {
 struct IdentifierList {
 	char * identifier;
 	IdentifierList * next;
+	IdentifierList * tail;
 };
 
 struct Connection {
@@ -78,6 +79,7 @@ struct Connection {
 struct ConnectionList {
 	Connection * connection;
 	ConnectionList * next;
+	ConnectionList * tail;
 };
 
 struct Declaration {
@@ -109,6 +111,7 @@ struct SequentialAssignment {
 struct SequentialAssignmentList {
 	SequentialAssignment * assignment;
 	SequentialAssignmentList * next;
+	SequentialAssignmentList * tail;
 };
 
 struct ClockBlock {
@@ -145,6 +148,7 @@ struct CircuitItem {
 struct CircuitItemList {
 	CircuitItem * item;
 	CircuitItemList * next;
+	CircuitItemList * tail;
 };
 
 struct Circuit {
@@ -155,6 +159,7 @@ struct Circuit {
 struct CircuitList {
 	Circuit * circuit;
 	CircuitList * next;
+	CircuitList * tail;
 };
 
 struct Program {

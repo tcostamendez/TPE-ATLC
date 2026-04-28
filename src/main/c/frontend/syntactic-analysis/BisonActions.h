@@ -3,6 +3,7 @@
 
 #include "../../support/language/String.h"
 #include "../../support/logging/Logger.h"
+#include "../../support/type/CompilationStatus.h"
 #include "../../support/type/CompilerState.h"
 #include "../../support/type/ModuleDestructor.h"
 #include "AbstractSyntaxTree.h"
@@ -11,6 +12,7 @@
 
 /** Initialize module's internal state. */
 ModuleDestructor initializeBisonActionsModule(CompilerState * compilerState);
+CompilationStatus getBisonActionsStatus();
 
 IdentifierList * IdentifierListSemanticAction(char * identifier);
 IdentifierList * AppendIdentifierSemanticAction(IdentifierList * identifierList, char * identifier);

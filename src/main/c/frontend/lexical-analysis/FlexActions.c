@@ -45,7 +45,7 @@ static void _logLexicalError(const char * reason, const char * lexeme) {
 	const int column = (location != NULL && 0 < location->first_column) ? location->first_column : 1;
 	if (lexeme != NULL) {
 		char * escapedLexeme = escape(lexeme);
-		logError(_logger, "Frontend lexical error at line %d, column %d: %s near \"%s\".", line, column, reason, escapedLexeme);
+		logError(_logger, "Frontend lexical error at line %d, column %d: %s near \"%s\".", line, column, reason, escapedLexeme != NULL ? escapedLexeme : "<unavailable>");
 		free(escapedLexeme);
 	}
 	else {
@@ -71,13 +71,18 @@ ModuleDestructor initializeFlexActionsModule(LexicalAnalyzer * lexicalAnalyzer) 
 }
 
 static void _logTokenAction(const char * actionName, Token * token) {
+	if (token == NULL) {
+		logError(_logger, "%s could not log a token because allocation failed.", actionName);
+		return;
+	}
+
 	char * escapedLexeme = escape(token->lexeme);
 	logDebugging(_logger, WARNING_COLOR "%s" DEFAULT_COLOR ": Token(context=%d, label=%d, length=%d, lexeme=%s\"%s\"%s, line=%d, column=%d, semanticValue=%p)",
 		actionName,
 		token->context,
 		token->label,
 		token->length,
-		INFORMATION_COLOR, escapedLexeme, DEFAULT_COLOR,
+		INFORMATION_COLOR, escapedLexeme != NULL ? escapedLexeme : "<unavailable>", DEFAULT_COLOR,
 		token->line,
 		token->column,
 		token->semanticValue);
@@ -87,6 +92,9 @@ static void _logTokenAction(const char * actionName, Token * token) {
 static CompilationStatus _pushSimpleToken(TokenLabel label, const char * actionName) {
 	_consumeCurrentLexeme();
 	Token * token = createToken(_lexicalAnalyzer, label);
+	if (token == NULL) {
+		return OUT_OF_MEMORY;
+	}
 	_logTokenAction(actionName, token);
 	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
 	destroyToken(token);
@@ -97,6 +105,9 @@ CompilationStatus CommentLexemeAction(FlexContext context) {
 	_consumeCurrentLexeme();
 	if (_logIgnoredLexemes) {
 		Token * token = createToken(_lexicalAnalyzer, IGNORED);
+		if (token == NULL) {
+			return OUT_OF_MEMORY;
+		}
 		_logTokenAction(__FUNCTION__, token);
 		destroyToken(token);
 	}
@@ -108,6 +119,9 @@ CompilationStatus CommentContentLexemeAction() {
 	_consumeCurrentLexeme();
 	if (_logIgnoredLexemes) {
 		Token * token = createToken(_lexicalAnalyzer, IGNORED);
+		if (token == NULL) {
+			return OUT_OF_MEMORY;
+		}
 		_logTokenAction(__FUNCTION__, token);
 		destroyToken(token);
 	}
@@ -118,6 +132,9 @@ CompilationStatus CommentEndLexemeAction() {
 	_consumeCurrentLexeme();
 	if (_logIgnoredLexemes) {
 		Token * token = createToken(_lexicalAnalyzer, IGNORED);
+		if (token == NULL) {
+			return OUT_OF_MEMORY;
+		}
 		_logTokenAction(__FUNCTION__, token);
 		destroyToken(token);
 	}
@@ -133,6 +150,9 @@ CompilationStatus EOFLexemeAction() {
 		return FAILED;
 	}
 	Token * token = createToken(_lexicalAnalyzer, 0);
+	if (token == NULL) {
+		return OUT_OF_MEMORY;
+	}
 	_logTokenAction(__FUNCTION__, token);
 	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
 	destroyToken(token);
@@ -142,7 +162,15 @@ CompilationStatus EOFLexemeAction() {
 CompilationStatus IdentifierLexemeAction() {
 	_consumeCurrentLexeme();
 	Token * token = createToken(_lexicalAnalyzer, IDENTIFIER);
+	if (token == NULL) {
+		return OUT_OF_MEMORY;
+	}
 	token->semanticValue->string = calloc(token->length + 1, sizeof(char));
+	if (token->semanticValue->string == NULL) {
+		destroyToken(token);
+		logError(_logger, "The compiler ran out of memory while storing an identifier.");
+		return OUT_OF_MEMORY;
+	}
 	strcpy(token->semanticValue->string, token->lexeme);
 	_logTokenAction(__FUNCTION__, token);
 	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
@@ -154,6 +182,9 @@ CompilationStatus IgnoredLexemeAction() {
 	_consumeCurrentLexeme();
 	if (_logIgnoredLexemes) {
 		Token * token = createToken(_lexicalAnalyzer, IGNORED);
+		if (token == NULL) {
+			return OUT_OF_MEMORY;
+		}
 		_logTokenAction(__FUNCTION__, token);
 		destroyToken(token);
 	}
@@ -167,6 +198,9 @@ CompilationStatus SymbolLexemeAction(TokenLabel label) {
 CompilationStatus UnknownLexemeAction() {
 	_consumeCurrentLexeme();
 	Token * token = createToken(_lexicalAnalyzer, UNKNOWN);
+	if (token == NULL) {
+		return OUT_OF_MEMORY;
+	}
 	_logTokenAction(__FUNCTION__, token);
 	_logLexicalError("unexpected lexeme", token->lexeme);
 	destroyToken(token);

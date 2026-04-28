@@ -16,6 +16,12 @@
 const int main(const int length, const char ** arguments) {
 	LexicalAnalyzer * lexicalAnalyzer = createLexicalAnalyzer();
 	Logger * logger = createLogger("EntryPoint");
+	if (lexicalAnalyzer == NULL) {
+		logCritical(logger, "The compiler could not initialize its lexical analyzer.");
+		destroyLogger(logger);
+		return OUT_OF_MEMORY;
+	}
+
 	for (int k = 0; k < length; ++k) {
 		logDebugging(logger, "Argument %d: \"%s\"", k, arguments[k]);
 	}
@@ -31,6 +37,13 @@ const int main(const int length, const char ** arguments) {
 		initializeGeneratorModule()
 	};
 	CompilationStatus compilationStatus = executeSyntacticAnalysis();
+	if (compilationStatus == SUCCEEDED) {
+		CompilationStatus bisonStatus = getBisonActionsStatus();
+		if (bisonStatus != SUCCEEDED) {
+			compilationStatus = bisonStatus;
+		}
+	}
+
 	Program * program = compilerState.abstractSyntaxTree;
 	if (compilationStatus == SUCCEEDED && program != NULL) {
 		logDebugging(logger, "Frontend accepted the input program.");
@@ -46,7 +59,9 @@ const int main(const int length, const char ** arguments) {
 	}
 	else {
 		logError(logger, "The frontend rejects the input program.");
-		compilationStatus = FAILED;
+		if (compilationStatus == SUCCEEDED) {
+			compilationStatus = FAILED;
+		}
 	}
 	logDebugging(logger, "Releasing AST resources...");
 	destroyProgram(program);

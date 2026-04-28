@@ -1,4 +1,5 @@
 #include "AbstractSyntaxTree.h"
+#include <stdbool.h>
 
 /* MODULE INTERNAL STATE */
 
@@ -57,7 +58,18 @@ void destroyDeclaration(Declaration * declaration) {
 
 void destroyExpression(Expression * expression) {
 	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
-	if (expression != NULL) {
+	if (expression == NULL) {
+		return;
+	}
+
+	size_t capacity = 16;
+	size_t size = 0;
+	Expression ** nodeStack = calloc(capacity, sizeof(Expression *));
+	bool * visitedStack = calloc(capacity, sizeof(bool));
+	if (nodeStack == NULL || visitedStack == NULL) {
+		free(nodeStack);
+		free(visitedStack);
+
 		switch (expression->type) {
 			case IDENTIFIER_EXPRESSION:
 				free(expression->identifier);
@@ -71,7 +83,86 @@ void destroyExpression(Expression * expression) {
 				break;
 		}
 		free(expression);
+		return;
 	}
+
+	nodeStack[size] = expression;
+	visitedStack[size] = false;
+	++size;
+
+	while (0 < size) {
+		Expression * current = nodeStack[size - 1];
+		if (current == NULL) {
+			--size;
+			continue;
+		}
+
+		if (visitedStack[size - 1]) {
+			switch (current->type) {
+				case IDENTIFIER_EXPRESSION:
+					free(current->identifier);
+					break;
+				case UNARY_EXPRESSION:
+				case BINARY_EXPRESSION:
+					break;
+			}
+			free(current);
+			--size;
+			continue;
+		}
+
+		visitedStack[size - 1] = true;
+		Expression * children[2] = { NULL, NULL };
+		size_t childCount = 0;
+		switch (current->type) {
+			case IDENTIFIER_EXPRESSION:
+				break;
+			case UNARY_EXPRESSION:
+				children[childCount++] = current->operand;
+				break;
+			case BINARY_EXPRESSION:
+				children[childCount++] = current->rightExpression;
+				children[childCount++] = current->leftExpression;
+				break;
+		}
+
+		for (size_t index = 0; index < childCount; ++index) {
+			Expression * child = children[index];
+			if (child == NULL) {
+				continue;
+			}
+
+			if (size == capacity) {
+				size_t newCapacity = capacity * 2;
+				Expression ** resizedNodeStack = calloc(newCapacity, sizeof(Expression *));
+				bool * resizedVisitedStack = calloc(newCapacity, sizeof(bool));
+				if (resizedNodeStack == NULL || resizedVisitedStack == NULL) {
+					free(resizedNodeStack);
+					free(resizedVisitedStack);
+					destroyExpression(child);
+					continue;
+				}
+
+				for (size_t copyIndex = 0; copyIndex < size; ++copyIndex) {
+					resizedNodeStack[copyIndex] = nodeStack[copyIndex];
+					resizedVisitedStack[copyIndex] = visitedStack[copyIndex];
+				}
+
+				free(nodeStack);
+				free(visitedStack);
+				nodeStack = resizedNodeStack;
+				visitedStack = resizedVisitedStack;
+				capacity = newCapacity;
+			}
+
+			nodeStack[size] = child;
+			visitedStack[size] = false;
+			++size;
+		}
+	}
+
+	free(nodeStack);
+	free(visitedStack);
 }
 
 void destroySequentialAssignment(SequentialAssignment * assignment) {
