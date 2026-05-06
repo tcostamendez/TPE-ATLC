@@ -1,0 +1,5 @@
+circuit Broken {
+input x;
+output y;
+Buffer(input x) -> (out=y);
+}
