@@ -4,50 +4,50 @@
 
 # TPE-ATLC
 
-ATLC compiler project developed in C with Flex and Bison. The current repository state corresponds to **Stage 2 (Frontend)** of the project: lexical analysis, syntactic analysis and AST construction for a hardware-description DSL for synchronous sequential boolean circuits.
+Proyecto de compilador de ATLC desarrollado en C con Flex y Bison. El estado actual del repositorio corresponde a la **Etapa 2 (Frontend)** del proyecto: análisis léxico, análisis sintáctico y construcción del AST para un DSL de descripción de hardware orientado a circuitos booleanos secuenciales síncronos.
 
-* [Stage 2 Scope](#stage-2-scope)
-* [Language Overview](#language-overview)
-* [Requirements](#requirements)
-* [Configuration](#configuration)
-* [Commands](#commands)
+* [Alcance de la Etapa 2](#alcance-de-la-etapa-2)
+* [Resumen del lenguaje](#resumen-del-lenguaje)
+* [Requisitos](#requisitos)
+* [Configuración](#configuración)
+* [Comandos](#comandos)
 * [Tests](#tests)
-* [Documentation](#documentation)
+* [Documentación](#documentación)
 * [CI/CD](#cicd)
-* [Recommended Extensions](#recommended-extensions)
+* [Extensiones recomendadas](#extensiones-recomendadas)
 
-## Stage 2 Scope
+## Alcance de la Etapa 2
 
-This deliverable implements:
+Esta entrega implementa:
 
-* lexical analysis with Flex
-* syntactic analysis with Bison
-* AST construction for valid programs
-* parser-oriented accept/reject tests
+* análisis léxico con Flex
+* análisis sintáctico con Bison
+* construcción del AST para programas válidos
+* tests de aceptación/rechazo orientados al parser
 
-This deliverable does **not** implement yet:
+Esta entrega **no** implementa todavía:
 
-* semantic analysis
-* symbol tables
-* instance interface validation
-* combinational cycle detection
-* simulation
-* code generation
+* análisis semántico
+* tablas de símbolos
+* validación de la interfaz de instancias
+* detección de ciclos combinacionales
+* simulación
+* generación de código
 
-The backend modules are intentionally kept as stubs so the compiler pipeline remains wired while Stage 2 stops after AST construction.
+Los módulos del backend se mantienen como stubs para que la pipeline del compilador siga conectada, mientras la Etapa 2 termina luego de la construcción del AST.
 
-## Language Overview
+## Resumen del lenguaje
 
-The Stage 2 frontend recognizes programs composed of one or more `circuit` definitions with:
+El frontend de la Etapa 2 reconoce programas compuestos por una o más definiciones `circuit` con:
 
-* declarations: `input`, `output`, `wire`, `reg`
-* combinational assignments with `=`
-* sequential blocks with `on rising_edge(clk) { ... }`
-* sequential assignments with `<=`
-* boolean expressions using `not`, `and`, `xor`, `or`
-* subcircuit instantiation with `CircuitName(...) -> (...);`
+* declaraciones: `input`, `output`, `wire`, `reg`
+* asignaciones combinacionales con `=`
+* bloques secuenciales con `on rising_edge(clk) { ... }`
+* asignaciones secuenciales con `<=`
+* expresiones booleanas con `not`, `and`, `xor`, `or`
+* instanciación de subcircuitos con `CircuitName(...) -> (...);`
 
-Example:
+Ejemplo:
 
 ```txt
 circuit Register1 {
@@ -65,27 +65,27 @@ on rising_edge(clk) {
 }
 ```
 
-## Requirements
+## Requisitos
 
 * [Docker](https://www.docker.com/)
 
-The intended build and test environment is the Docker setup shipped with the repository. This is especially important because the host environment may contain an older `bison` or may not have `cmake` installed.
+El entorno previsto para compilar y correr los tests es el setup de Docker que viene con el repositorio. Esto es importante porque el host puede tener una versión antigua de `bison` o no tener `cmake` instalado.
 
-## Configuration
+## Configuración
 
-Set the following environment variables to control the compiler behaviour:
+Definir las siguientes variables de entorno para controlar el comportamiento del compilador:
 
-| Name                  | Default | Description |
+| Nombre                | Default | Descripción |
 | :-------------------- | :-----: | :---------- |
-| `ENVIRONMENT`         | `Local` | Active environment name. Available values: `Local`, `Development`, `Production`. |
-| `LOG_IGNORED_LEXEMES` | `true`  | When `true`, ignored lexemes are logged at `DEBUGGING` level. |
-| `LOGGING_LEVEL`       | `ALL`   | Minimum logging level. Available values: `ALL`, `DEBUGGING`, `INFORMATION`, `WARNING`, `ERROR`, `CRITICAL`. |
+| `ENVIRONMENT`         | `Local` | Nombre del entorno activo. Valores disponibles: `Local`, `Development`, `Production`. |
+| `LOG_IGNORED_LEXEMES` | `true`  | Cuando es `true`, los lexemas ignorados se registran en nivel `DEBUGGING`. |
+| `LOGGING_LEVEL`       | `ALL`   | Nivel mínimo de logging. Valores disponibles: `ALL`, `DEBUGGING`, `INFORMATION`, `WARNING`, `ERROR`, `CRITICAL`. |
 
-`docker compose` can also read these values from an `.env` file.
+`docker compose` también puede leer estos valores desde un archivo `.env`.
 
-## Commands
+## Comandos
 
-### Start a development container
+### Iniciar un contenedor de desarrollo
 
 ```bash
 docker compose run --rm compiler
@@ -93,34 +93,34 @@ docker compose run --rm compiler
 
 ### Build
 
-Regenerates parser/scanner sources and builds the compiler:
+Regenera los archivos del parser/scanner y compila el compilador:
 
 ```bash
 src/main/bash/build.sh
 ```
 
-### Run
+### Ejecutar
 
-Compiles a single input program from standard input:
+Compila un programa desde la entrada estándar:
 
 ```bash
-src/main/bash/run.sh <program>
+src/main/bash/run.sh <programa>
 ```
 
-The executable returns:
+El ejecutable retorna:
 
-* `0` when the frontend accepts the program and builds an AST
-* non-zero when lexical or syntactic analysis rejects the program
+* `0` cuando el frontend acepta el programa y construye un AST
+* distinto de cero cuando el análisis léxico o sintáctico rechaza el programa
 
-### Test
+### Tests
 
-Runs the Stage 2 acceptance/rejection suite:
+Corre la suite de aceptación/rechazo de la Etapa 2:
 
 ```bash
 src/main/bash/test.sh
 ```
 
-### Stop
+### Detener
 
 ```bash
 exit
@@ -129,24 +129,24 @@ docker compose down
 
 ## Tests
 
-The test suite under `src/test/c` is syntax-oriented only.
+La suite de tests bajo `src/test/c` sólo cubre sintaxis.
 
-* `src/test/c/accept`: valid programs that must reach AST construction
-* `src/test/c/reject`: invalid programs that must fail in the frontend
-* `*.stderr`: expected diagnostic fragments for selected failure cases
+* `src/test/c/accept`: programas válidos que deben llegar a la construcción del AST
+* `src/test/c/reject`: programas inválidos que deben fallar en el frontend
+* `*.stderr`: fragmentos esperados del diagnóstico para casos seleccionados de falla
 
-Stage 2 may still accept programs that are semantically invalid, because semantic validation belongs to Stage 3.
+La Etapa 2 todavía puede aceptar programas que son semánticamente inválidos, ya que la validación semántica corresponde a la Etapa 3.
 
-## Documentation
+## Documentación
 
-* Stage 1 specification: [doc/Especificacion-Stage1.pdf](doc/Especificacion-Stage1.pdf)
-* Stage 2 implementation notes: [doc/Stage2-Frontend.md](doc/Stage2-Frontend.md)
+* Especificación de la Etapa 1: [doc/Especificacion-Stage1.pdf](doc/Especificacion-Stage1.pdf)
+* Notas de implementación de la Etapa 2: [doc/Stage2-Frontend.md](doc/Stage2-Frontend.md)
 
 ## CI/CD
 
-To trigger automatic integration on push or pull requests, activate GitHub Actions in the repository settings and configure:
+Para activar la integración automática en cada push o pull request, activar GitHub Actions en la configuración del repositorio y aplicar:
 
-| Key                                                        | Value |
+| Clave                                                      | Valor |
 | :--------------------------------------------------------- | :---- |
 | `Actions permissions`                                      | `Allow all actions and reusable workflows` |
 | `Allow GitHub Actions to create and approve pull requests` | `false` |
@@ -154,7 +154,7 @@ To trigger automatic integration on push or pull requests, activate GitHub Actio
 | `Fork pull request workflows from outside collaborators`   | `Require approval for all outside collaborators` |
 | `Workflow permissions`                                     | `Read repository contents and packages permissions` |
 
-## Recommended Extensions
+## Extensiones recomendadas
 
 * [C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)
 * [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)

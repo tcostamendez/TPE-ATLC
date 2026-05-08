@@ -1,49 +1,49 @@
-# Stage 2 Frontend Notes
+# Notas del Frontend de la Etapa 2
 
-## Deliverable Scope
+## Alcance de la entrega
 
-This repository snapshot closes Stage 2 of the ATLC project. The implemented scope is:
+Este snapshot del repositorio cierra la Etapa 2 del proyecto de ATLC. El alcance implementado es:
 
-* Flex-based lexical analysis
-* Bison-based syntactic analysis
-* AST construction for the circuit DSL
-* acceptance/rejection tests focused on frontend behaviour
+* análisis léxico basado en Flex
+* análisis sintáctico basado en Bison
+* construcción del AST para el DSL de circuitos
+* tests de aceptación/rechazo orientados al comportamiento del frontend
 
-Semantic analysis is intentionally out of scope for this stage and is deferred to Stage 3.
+El análisis semántico queda intencionalmente fuera del alcance de esta etapa y se difiere a la Etapa 3.
 
-## Implemented DSL Slice
+## Subconjunto del DSL implementado
 
-The current frontend accepts:
+El frontend actual acepta:
 
-* `circuit` module definitions
-* signal declarations with `input`, `output`, `wire`, `reg`
-* combinational assignments with `=`
-* sequential blocks written as `on rising_edge(clk) { ... }`
-* sequential assignments with `<=`
-* boolean expressions with `not`, `and`, `xor`, `or`
-* subcircuit instantiations with named input/output connections
+* definiciones de módulos `circuit`
+* declaraciones de señales con `input`, `output`, `wire`, `reg`
+* asignaciones combinacionales con `=`
+* bloques secuenciales escritos como `on rising_edge(clk) { ... }`
+* asignaciones secuenciales con `<=`
+* expresiones booleanas con `not`, `and`, `xor`, `or`
+* instanciaciones de subcircuitos con conexiones nombradas de entrada/salida
 
-Programs may contain multiple circuits in the same input.
+Los programas pueden contener múltiples circuitos en la misma entrada.
 
-## AST Coverage
+## Cobertura del AST
 
-The AST models:
+El AST modela:
 
-* program roots with multiple circuits
-* circuit definitions
-* declaration items
-* statement items
-* combinational assignments
-* clocked blocks
-* sequential assignments
-* boolean expressions
-* instances with named input/output connections
+* raíces de programa con múltiples circuitos
+* definiciones de circuito
+* ítems de declaración
+* ítems de sentencia
+* asignaciones combinacionales
+* bloques sensibles al reloj
+* asignaciones secuenciales
+* expresiones booleanas
+* instancias con conexiones nombradas de entrada/salida
 
-Lists are represented as linked-list nodes to stay aligned with the project template and the current C implementation style.
+Las listas se representan como nodos de listas enlazadas para mantenerse alineadas con el template del proyecto y con el estilo de implementación actual en C.
 
-## Validation Strategy
+## Estrategia de validación
 
-The intended validation flow is:
+El flujo de validación previsto es:
 
 ```bash
 docker compose build compiler
@@ -51,29 +51,29 @@ docker compose run --rm compiler src/main/bash/build.sh
 docker compose run --rm compiler src/main/bash/test.sh
 ```
 
-Why Docker:
+Por qué Docker:
 
-* the repository expects a newer `bison` than the one available in some host environments
-* `cmake` may be absent locally
-* the project is meant to be reproducible inside the provided Ubuntu-based toolchain
+* el repositorio espera una versión de `bison` más nueva que la disponible en algunos entornos host
+* `cmake` puede no estar instalado localmente
+* el proyecto está pensado para ser reproducible dentro del toolchain provisto basado en Ubuntu
 
-## Expected Runtime Behaviour
+## Comportamiento de ejecución esperado
 
-At this stage, the executable returns:
+En esta etapa, el ejecutable retorna:
 
-* `0` when the frontend tokenizes the input, parses it successfully and builds an AST
-* non-zero when lexical or syntactic analysis rejects the input
+* `0` cuando el frontend tokeniza la entrada, la parsea con éxito y construye un AST
+* distinto de cero cuando el análisis léxico o sintáctico rechaza la entrada
 
-The backend remains wired through stub modules only to preserve the compiler pipeline shape. No semantic validation or code generation result should be expected from Stage 2.
+El backend permanece conectado a través de módulos stub solamente para preservar la forma de la pipeline del compilador. No se debe esperar ningún resultado de validación semántica ni de generación de código en la Etapa 2.
 
-## Out of Scope Until Stage 3
+## Fuera de alcance hasta la Etapa 3
 
-The following features are deliberately not part of this deliverable:
+Las siguientes funcionalidades quedan deliberadamente fuera de esta entrega:
 
-* symbol tables
-* declaration/use checks
-* type or role restrictions between signals
-* instance interface validation
-* illegal combinational cycle detection
-* simulation across clock cycles
-* code generation
+* tablas de símbolos
+* chequeos de declaración/uso
+* restricciones de tipo o rol entre señales
+* validación de la interfaz de las instancias
+* detección de ciclos combinacionales ilegales
+* simulación a través de ciclos de reloj
+* generación de código
