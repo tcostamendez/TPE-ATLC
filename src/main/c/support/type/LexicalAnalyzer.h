@@ -7,6 +7,7 @@
  * A lexical-analyzer and its internal state.
  */
 typedef struct {
+	unsigned int column;
 	Logger * logger;
 	void * location;
 	void * parser;

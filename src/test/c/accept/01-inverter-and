@@ -1,0 +1,7 @@
+circuit InverterAnd {
+input a, b;
+output y;
+wire na;
+na = not a;
+y = na and b;
+}

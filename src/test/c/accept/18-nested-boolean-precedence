@@ -1,0 +1,8 @@
+circuit NestedBooleanPrecedence {
+input a, b, c, d, e, f;
+output y;
+wire left, right;
+left = not (a and (b or c));
+right = (d xor e) or (not f);
+y = left and right xor (a or not b);
+}

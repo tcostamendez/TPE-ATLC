@@ -11,14 +11,20 @@ static const char * _toContextString(const LoggingLevel loggingLevel);
  * Logs a new message at the specified level, using a format string.
  */
 static void _log(const Logger * logger, const LoggingLevel loggingLevel, const char * const format, va_list arguments) {
+	if (logger == NULL || format == NULL) {
+		return;
+	}
+
 	if (logger->loggingLevel <= loggingLevel) {
 		const char * context = _toContextString(loggingLevel);
-		char * effectiveFormat = concatenate(6, context, "[", logger->name, "] ", format, "\n");
+		const char * loggerName = logger->name != NULL ? logger->name : "Logger";
+		char * effectiveFormat = concatenate(6, context, "[", loggerName, "] ", format, "\n");
+		const char * resolvedFormat = effectiveFormat != NULL ? effectiveFormat : format;
 		if (ERROR <= loggingLevel) {
-			_logInStream(stderr, effectiveFormat, arguments);
+			_logInStream(stderr, resolvedFormat, arguments);
 		}
 		else {
-			_logInStream(stdout, effectiveFormat, arguments);
+			_logInStream(stdout, resolvedFormat, arguments);
 		}
 		free(effectiveFormat);
 	}
@@ -70,9 +76,18 @@ static const char * _toContextString(const LoggingLevel loggingLevel) {
 
 Logger * createLogger(char * name) {
 	Logger * logger = calloc(1, sizeof(Logger));
+	if (logger == NULL) {
+		return NULL;
+	}
+
 	logger->loggingLevel = _loggingLevelFromString(getStringOrDefault("LOGGING_LEVEL", "INFORMATION"));
-	logger->name = calloc(1 + strlen(name), sizeof(char));
-	strcpy(logger->name, name);
+	const char * effectiveName = name != NULL ? name : "Logger";
+	logger->name = calloc(1 + strlen(effectiveName), sizeof(char));
+	if (logger->name == NULL) {
+		free(logger);
+		return NULL;
+	}
+	strcpy(logger->name, effectiveName);
 	return logger;
 }
 

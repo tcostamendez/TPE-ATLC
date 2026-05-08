@@ -1,2 +1,7 @@
-0
-/* An open comment that never ends...
+/*
+	A multiline comment should be rejected when it is not closed.
+circuit Broken {
+input a;
+output y;
+y = a;
+}

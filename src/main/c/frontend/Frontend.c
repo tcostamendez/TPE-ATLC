@@ -5,6 +5,8 @@
 static LexicalAnalyzer * _lexicalAnalyzer = NULL;
 static Logger * _logger = NULL;
 
+static void _destroyInputBufferState(InputBuffer * inputBuffer);
+
 /** Shutdown module's internal state. */
 void _shutdownFrontendModule() {
 	if (_logger != NULL) {
@@ -48,32 +50,105 @@ static const char * _compilationStatusAsString(const CompilationStatus compilati
 /* PUBLIC FUNCTIONS */
 
 InputBuffer * createInputBuffer(LexicalAnalyzer * lexicalAnalyzer, const char * path) {
+	if (lexicalAnalyzer == NULL || lexicalAnalyzer->scanner == NULL || path == NULL) {
+		logError(_logger, "Unable to create an input buffer without a scanner and a path.");
+		return NULL;
+	}
+
 	InputBuffer * inputBuffer = (InputBuffer *) calloc(1, sizeof(InputBuffer));
+	if (inputBuffer == NULL) {
+		logError(_logger, "The compiler ran out of memory while creating an input buffer.");
+		return NULL;
+	}
+
 	inputBuffer->bufferSizeInBytes = YY_BUF_SIZE;
 	inputBuffer->file = fopen(path, "r");
 	inputBuffer->lexicalAnalyzer = lexicalAnalyzer;
+	if (inputBuffer->file == NULL) {
+		logError(_logger, "Unable to open \"%s\" for lexical analysis.", path);
+		destroyInputBuffer(inputBuffer);
+		return NULL;
+	}
+
 	inputBuffer->buffer = yy_create_buffer(inputBuffer->file, inputBuffer->bufferSizeInBytes, lexicalAnalyzer->scanner);
+	if (inputBuffer->buffer == NULL) {
+		logError(_logger, "Unable to allocate a scanner buffer for \"%s\".", path);
+		destroyInputBuffer(inputBuffer);
+		return NULL;
+	}
+
 	return inputBuffer;
 }
 
 LexicalAnalyzer * createLexicalAnalyzer() {
 	LexicalAnalyzer * lexicalAnalyzer = (LexicalAnalyzer *) calloc(1, sizeof(LexicalAnalyzer));
+	if (lexicalAnalyzer == NULL) {
+		return NULL;
+	}
+
+	lexicalAnalyzer->column = 1;
 	lexicalAnalyzer->location = calloc(1, sizeof(YYLTYPE));
+	if (lexicalAnalyzer->location == NULL) {
+		destroyLexicalAnalyzer(lexicalAnalyzer);
+		return NULL;
+	}
+
 	lexicalAnalyzer->logger = createLogger("LexicalAnalyzer");
-	yylex_init(&lexicalAnalyzer->scanner);
+	if (yylex_init(&lexicalAnalyzer->scanner) != 0) {
+		destroyLexicalAnalyzer(lexicalAnalyzer);
+		return NULL;
+	}
+
 	lexicalAnalyzer->parser = yypstate_new();
+	if (lexicalAnalyzer->parser == NULL) {
+		destroyLexicalAnalyzer(lexicalAnalyzer);
+		return NULL;
+	}
+
+	yyset_in(stdin, lexicalAnalyzer->scanner);
+	yyset_out(stdout, lexicalAnalyzer->scanner);
+	yyrestart(stdin, lexicalAnalyzer->scanner);
+	yyset_lineno(1, lexicalAnalyzer->scanner);
+	YYLTYPE * location = (YYLTYPE *) lexicalAnalyzer->location;
+	location->first_line = 1;
+	location->first_column = 1;
+	location->last_line = 1;
+	location->last_column = 1;
 	flexEnterContext(lexicalAnalyzer, 0);
 	return lexicalAnalyzer;
 }
 
 Token * createToken(LexicalAnalyzer * lexicalAnalyzer, TokenLabel label) {
+	if (lexicalAnalyzer == NULL || lexicalAnalyzer->scanner == NULL) {
+		return NULL;
+	}
+
 	Token * token = (Token *) calloc(1, sizeof(Token));
+	if (token == NULL) {
+		logError(_logger, "The compiler ran out of memory while creating a token.");
+		return NULL;
+	}
+
+	YYLTYPE * location = (YYLTYPE *) lexicalAnalyzer->location;
 	token->context = flexCurrentContext(lexicalAnalyzer);
 	token->label = label;
 	token->length = yyget_leng(lexicalAnalyzer->scanner);
 	token->lexeme = (char *) calloc(token->length + 1, sizeof(char));
+	if (token->lexeme == NULL) {
+		destroyToken(token);
+		logError(_logger, "The compiler ran out of memory while copying the current lexeme.");
+		return NULL;
+	}
+
 	token->line = yyget_lineno(lexicalAnalyzer->scanner);
+	token->column = location != NULL ? location->first_column : lexicalAnalyzer->column;
 	token->semanticValue = (SemanticValue *) calloc(1, sizeof(SemanticValue));
+	if (token->semanticValue == NULL) {
+		destroyToken(token);
+		logError(_logger, "The compiler ran out of memory while allocating token semantic data.");
+		return NULL;
+	}
+
 	strncpy(token->lexeme, yyget_text(lexicalAnalyzer->scanner), token->length);
 	return token;
 }
@@ -84,25 +159,31 @@ FlexContext currentLexicalAnalyzerContext(LexicalAnalyzer * lexicalAnalyzer) {
 
 void destroyInputBuffer(InputBuffer * inputBuffer) {
 	if (inputBuffer != NULL) {
-		if (inputBuffer->buffer != NULL) {
-			/**
-			 * @todo
-			 *	Because "yypop_buffer_state" in "popInputBuffer" deletes the
-			 *	buffer, this line produces a double-free error. However,
-			 *	commenting the line produces a memory-leak when a syntax error
-			 *	takes place inside a secondary input buffer.
-			 */
-			// yy_delete_buffer((YY_BUFFER_STATE) inputBuffer->buffer, (yyscan_t) inputBuffer->lexicalAnalyzer->scanner);
-			inputBuffer->buffer = NULL;
-		}
-		if (inputBuffer->file != NULL) {
-			fclose(inputBuffer->file);
-			inputBuffer->file = NULL;
-		}
-		inputBuffer->bufferSizeInBytes = 0;
-		inputBuffer->lexicalAnalyzer = NULL;
+		_destroyInputBufferState(inputBuffer);
 		free(inputBuffer);
 	}
+}
+
+static void _destroyInputBufferState(InputBuffer * inputBuffer) {
+	if (inputBuffer == NULL) {
+		return;
+	}
+
+	if (inputBuffer->buffer != NULL
+		&& !inputBuffer->pushedToScanner
+		&& inputBuffer->lexicalAnalyzer != NULL
+		&& inputBuffer->lexicalAnalyzer->scanner != NULL) {
+		yy_delete_buffer((YY_BUFFER_STATE) inputBuffer->buffer, (yyscan_t) inputBuffer->lexicalAnalyzer->scanner);
+	}
+
+	inputBuffer->buffer = NULL;
+	if (inputBuffer->file != NULL) {
+		fclose(inputBuffer->file);
+		inputBuffer->file = NULL;
+	}
+	inputBuffer->bufferSizeInBytes = 0;
+	inputBuffer->lexicalAnalyzer = NULL;
+	inputBuffer->pushedToScanner = false;
 }
 
 void destroyLexicalAnalyzer(LexicalAnalyzer * lexicalAnalyzer) {
@@ -153,10 +234,18 @@ CompilationStatus executeLexicalAnalysis(LexicalAnalyzer * lexicalAnalyzer) {
 }
 
 CompilationStatus executeSyntacticAnalysis() {
+	if (_lexicalAnalyzer == NULL) {
+		logError(_logger, "No lexical analyzer is available for parsing.");
+		return UNKNOWN_ERROR;
+	}
+
 	logDebugging(_logger, "Parsing...");
 	CompilationStatus status = IN_PROGRESS;
 	while (status == IN_PROGRESS) {
 		status = executeLexicalAnalysis(_lexicalAnalyzer);
+	}
+	if (status == OUT_OF_MEMORY) {
+		logError(_logger, "The parser reported an out-of-memory condition while processing the input stream.");
 	}
 	logDebugging(_logger, "Compilation status: %s.", _compilationStatusAsString(status));
 	logDebugging(_logger, "Parsing is done.");
@@ -168,15 +257,28 @@ void leaveLexicalAnalyzerContext(LexicalAnalyzer * lexicalAnalyzer) {
 }
 
 bool popInputBuffer(LexicalAnalyzer * lexicalAnalyzer) {
+	if (lexicalAnalyzer == NULL || lexicalAnalyzer->scanner == NULL) {
+		return false;
+	}
+
 	yypop_buffer_state((yyscan_t) lexicalAnalyzer->scanner);
 	return flexHasBuffer(lexicalAnalyzer);
 }
 
 void pushInputBuffer(InputBuffer * inputBuffer) {
+	if (inputBuffer == NULL || inputBuffer->buffer == NULL || inputBuffer->lexicalAnalyzer == NULL || inputBuffer->lexicalAnalyzer->scanner == NULL) {
+		return;
+	}
+
 	yypush_buffer_state((YY_BUFFER_STATE) inputBuffer->buffer, (yyscan_t) inputBuffer->lexicalAnalyzer->scanner);
+	inputBuffer->pushedToScanner = true;
 }
 
 CompilationStatus pushToken(LexicalAnalyzer * lexicalAnalyzer, Token * token) {
+	if (lexicalAnalyzer == NULL || lexicalAnalyzer->parser == NULL || token == NULL) {
+		return UNKNOWN_ERROR;
+	}
+
 	return (CompilationStatus) yypush_parse(
 		(yypstate *) lexicalAnalyzer->parser,
 		token->label,

@@ -1,0 +1,9 @@
+circuit DFlipFlop {
+input d, clk;
+output q;
+reg state;
+q = state;
+on rising_edge(clk) {
+state <= d;
+}
+}

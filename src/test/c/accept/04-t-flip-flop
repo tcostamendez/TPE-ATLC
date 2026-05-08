@@ -1,0 +1,9 @@
+circuit TFlipFlop {
+input t, clk;
+output q;
+reg state;
+q = state;
+on rising_edge(clk) {
+state <= state xor t;
+}
+}

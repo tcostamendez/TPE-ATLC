@@ -1,0 +1,5 @@
+circuit Broken {
+input x, y;
+output z;
+AndGate(a=x, b=y) -(out=z);
+}

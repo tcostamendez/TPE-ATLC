@@ -1,0 +1,6 @@
+circuit HalfAdder {
+input a, b;
+output sum, carry;
+sum = a xor b;
+carry = a and b;
+}

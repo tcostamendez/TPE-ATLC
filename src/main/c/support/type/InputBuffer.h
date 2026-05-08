@@ -3,6 +3,7 @@
 
 #include "../logging/Logger.h"
 #include "LexicalAnalyzer.h"
+#include <stdbool.h>
 #include <stdio.h>
 
 /**
@@ -11,6 +12,7 @@
 typedef struct {
 	FILE * file;
 	LexicalAnalyzer * lexicalAnalyzer;
+	bool pushedToScanner;
 	unsigned int bufferSizeInBytes;
 	void * buffer;
 } InputBuffer;

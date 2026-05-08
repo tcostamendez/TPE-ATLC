@@ -1,0 +1,5 @@
+circuit DeepExpression {
+input a, b, c, d, e, f, g, h;
+output y;
+y = not (((((a and b) or (c xor d)) and ((not e) or f)) xor ((g or h) and (a xor (not b)))) or (((c and d) xor (e or f)) and (not (g and h))));
+}

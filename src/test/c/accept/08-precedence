@@ -1,0 +1,5 @@
+circuit Precedence {
+input a, b, c, d;
+output y;
+y = not a and b xor c or d;
+}

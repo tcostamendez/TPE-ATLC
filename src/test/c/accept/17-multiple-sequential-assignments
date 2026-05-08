@@ -1,0 +1,12 @@
+circuit TwoRegisterPipeline {
+input d, enable, clk;
+output q;
+reg first, second;
+wire next_first;
+next_first = (enable and d) or ((not enable) and first);
+q = second;
+on rising_edge(clk) {
+first <= next_first;
+second <= first;
+}
+}

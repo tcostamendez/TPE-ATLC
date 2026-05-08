@@ -16,12 +16,17 @@
 const int main(const int length, const char ** arguments) {
 	LexicalAnalyzer * lexicalAnalyzer = createLexicalAnalyzer();
 	Logger * logger = createLogger("EntryPoint");
+	if (lexicalAnalyzer == NULL) {
+		logCritical(logger, "The compiler could not initialize its lexical analyzer.");
+		destroyLogger(logger);
+		return OUT_OF_MEMORY;
+	}
+
 	for (int k = 0; k < length; ++k) {
 		logDebugging(logger, "Argument %d: \"%s\"", k, arguments[k]);
 	}
 	CompilerState compilerState = {
-		.abstractSyntaxtTree = NULL,
-		.value = 0
+		.abstractSyntaxTree = NULL
 	};
 	ModuleDestructor moduleDestructors[] = {
 		initializeAbstractSyntaxTreeModule(),
@@ -32,26 +37,31 @@ const int main(const int length, const char ** arguments) {
 		initializeGeneratorModule()
 	};
 	CompilationStatus compilationStatus = executeSyntacticAnalysis();
-	Program * program = compilerState.abstractSyntaxtTree;
 	if (compilationStatus == SUCCEEDED) {
-		// ----------------------------------------------------------------------------------------
-		// Beginning of the Backend... ------------------------------------------------------------
-		logDebugging(logger, "Computing expression value...");
+		CompilationStatus bisonStatus = getBisonActionsStatus();
+		if (bisonStatus != SUCCEEDED) {
+			compilationStatus = bisonStatus;
+		}
+	}
+
+	Program * program = compilerState.abstractSyntaxTree;
+	if (compilationStatus == SUCCEEDED && program != NULL) {
+		logDebugging(logger, "Frontend accepted the input program.");
+		logDebugging(logger, "Stage 2 ends after AST construction; semantic analysis belongs to stage 3.");
 		ComputationResult computationResult = executeCalculator(&compilerState);
 		if (computationResult.succeeded) {
-			compilerState.value = computationResult.value;
 			executeGenerator(&compilerState);
 		}
 		else {
-			logError(logger, "The computation phase rejects the input program.");
+			logError(logger, "The stage 2 stubs could not confirm the AST hand-off.");
 			compilationStatus = FAILED;
 		}
-		// ...end of the Backend. -----------------------------------------------------------------
-		// ----------------------------------------------------------------------------------------
 	}
 	else {
-		logError(logger, "The syntactic-analysis phase rejects the input program.");
-		compilationStatus = FAILED;
+		logError(logger, "The frontend rejects the input program.");
+		if (compilationStatus == SUCCEEDED) {
+			compilationStatus = FAILED;
+		}
 	}
 	logDebugging(logger, "Releasing AST resources...");
 	destroyProgram(program);

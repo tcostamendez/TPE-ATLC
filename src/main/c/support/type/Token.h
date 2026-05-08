@@ -14,6 +14,7 @@ typedef struct {
 	FlexContext context;
 	SemanticValue * semanticValue;
 	TokenLabel label;
+	unsigned int column;
 	unsigned int length;
 	unsigned int line;
 } Token;

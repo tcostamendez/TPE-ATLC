@@ -4,35 +4,88 @@
 
 # TPE-ATLC
 
-A compiler project for ATLC, developed in C with Flex and Bison.
+Proyecto de compilador de ATLC desarrollado en C con Flex y Bison. El estado actual del repositorio corresponde a la **Etapa 2 (Frontend)** del proyecto: análisis léxico, análisis sintáctico y construcción del AST para un DSL de descripción de hardware orientado a circuitos booleanos secuenciales síncronos.
 
-* [Requirements](#requirements)
-* [Configuration](#configuration)
-* [Commands](#commands)
+* [Alcance de la Etapa 2](#alcance-de-la-etapa-2)
+* [Resumen del lenguaje](#resumen-del-lenguaje)
+* [Requisitos](#requisitos)
+* [Configuración](#configuración)
+* [Comandos](#comandos)
+* [Tests](#tests)
+* [Documentación](#documentación)
 * [CI/CD](#cicd)
-* [Recommended Extensions](#recommended-extensions)
+* [Extensiones recomendadas](#extensiones-recomendadas)
 
-## Requirements
+## Alcance de la Etapa 2
 
-* [Docker v28.3.2](https://www.docker.com/)
+Esta entrega implementa:
 
-## Configuration
+* análisis léxico con Flex
+* análisis sintáctico con Bison
+* construcción del AST para programas válidos
+* tests de aceptación/rechazo orientados al parser
 
-Set the following environment variables to control and configure the behaviour of the application:
+Esta entrega **no** implementa todavía:
 
-| Name                  | Default | Description                                                                                                                                                           |
-| :-------------------- | :-----: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ENVIRONMENT`         | `Local` | The active environment name. The available environments are: `Local`, `Development` and `Production`.                                                                 |
-| `LOG_IGNORED_LEXEMES` | `true`  | When `true`, logs all of the ignored lexemes found with Flex at `DEBUGGING` level. To remove those logs from the console output set it to `false`.                    |
-| `LOGGING_LEVEL`       | `ALL`   | The minimum level to log in the console output. From lower to higher, the available levels are: `ALL`, `DEBUGGING`, `INFORMATION`, `WARNING`, `ERROR` and `CRITICAL`. |
+* análisis semántico
+* tablas de símbolos
+* validación de la interfaz de instancias
+* detección de ciclos combinacionales
+* simulación
+* generación de código
 
-_Docker Compose_ can read the variables from an `.env` file too (see `compose.yaml` file).
+Los módulos del backend se mantienen como stubs para que la pipeline del compilador siga conectada, mientras la Etapa 2 termina luego de la construcción del AST.
 
-## Commands
+## Resumen del lenguaje
 
-### Start
+El frontend de la Etapa 2 reconoce programas compuestos por una o más definiciones `circuit` con:
 
-Rises an ephemeral container, ready to start development:
+* declaraciones: `input`, `output`, `wire`, `reg`
+* asignaciones combinacionales con `=`
+* bloques secuenciales con `on rising_edge(clk) { ... }`
+* asignaciones secuenciales con `<=`
+* expresiones booleanas con `not`, `and`, `xor`, `or`
+* instanciación de subcircuitos con `CircuitName(...) -> (...);`
+
+Ejemplo:
+
+```txt
+circuit Register1 {
+input in, load, clk;
+output out;
+reg value;
+wire next;
+
+out = value;
+next = (load and in) or ((not load) and value);
+
+on rising_edge(clk) {
+	value <= next;
+}
+}
+```
+
+## Requisitos
+
+* [Docker](https://www.docker.com/)
+
+El entorno previsto para compilar y correr los tests es el setup de Docker que viene con el repositorio. Esto es importante porque el host puede tener una versión antigua de `bison` o no tener `cmake` instalado.
+
+## Configuración
+
+Definir las siguientes variables de entorno para controlar el comportamiento del compilador:
+
+| Nombre                | Default | Descripción |
+| :-------------------- | :-----: | :---------- |
+| `ENVIRONMENT`         | `Local` | Nombre del entorno activo. Valores disponibles: `Local`, `Development`, `Production`. |
+| `LOG_IGNORED_LEXEMES` | `true`  | Cuando es `true`, los lexemas ignorados se registran en nivel `DEBUGGING`. |
+| `LOGGING_LEVEL`       | `ALL`   | Nivel mínimo de logging. Valores disponibles: `ALL`, `DEBUGGING`, `INFORMATION`, `WARNING`, `ERROR`, `CRITICAL`. |
+
+`docker compose` también puede leer estos valores desde un archivo `.env`.
+
+## Comandos
+
+### Iniciar un contenedor de desarrollo
 
 ```bash
 docker compose run --rm compiler
@@ -40,62 +93,68 @@ docker compose run --rm compiler
 
 ### Build
 
-Builds or rebuilds the entire compiler:
+Regenera los archivos del parser/scanner y compila el compilador:
 
 ```bash
 src/main/bash/build.sh
 ```
 
-### Run
+### Ejecutar
 
-Compiles a program:
+Compila un programa desde la entrada estándar:
 
 ```bash
-src/main/bash/run.sh <program>
+src/main/bash/run.sh <programa>
 ```
 
-where `<program>` is the path to the file that represents its entry-point.
+El ejecutable retorna:
 
-### Test
+* `0` cuando el frontend acepta el programa y construye un AST
+* distinto de cero cuando el análisis léxico o sintáctico rechaza el programa
 
-Executes every available unit-test under `src/test/c` folder:
+### Tests
+
+Corre la suite de aceptación/rechazo de la Etapa 2:
 
 ```bash
 src/main/bash/test.sh
 ```
 
-### Stop
-
-Logout, destroy the ephemeral containers and shutdowns the cluster:
+### Detener
 
 ```bash
 exit
 docker compose down
 ```
 
-### Docker
+## Tests
 
-| Command                                 | Description                                             |
-| :-------------------------------------- | :------------------------------------------------------ |
-| `docker builder prune --all`            | Removes all builds and complete build cache.            |
-| `docker compose --progress=plain build` | Forces a build or rebuild of the images in the cluster. |
-| `docker image prune`                    | Removes all of the dangling images from Docker.         |
-| `docker network prune`                  | Removes unused networks from Docker.                    |
-| `docker volume prune`                   | Removes unused volumes from Docker.                     |
+La suite de tests bajo `src/test/c` sólo cubre sintaxis.
+
+* `src/test/c/accept`: programas válidos que deben llegar a la construcción del AST
+* `src/test/c/reject`: programas inválidos que deben fallar en el frontend
+* `*.stderr`: fragmentos esperados del diagnóstico para casos seleccionados de falla
+
+La Etapa 2 todavía puede aceptar programas que son semánticamente inválidos, ya que la validación semántica corresponde a la Etapa 3.
+
+## Documentación
+
+* Especificación de la Etapa 1: [doc/Especificacion-Stage1.pdf](doc/Especificacion-Stage1.pdf)
+* Notas de implementación de la Etapa 2: [doc/Stage2-Frontend.md](doc/Stage2-Frontend.md)
 
 ## CI/CD
 
-To trigger an automatic integration on every push or PR (_Pull Request_), you must activate _GitHub Actions_ in the _Settings_ tab. Use the following configuration:
+Para activar la integración automática en cada push o pull request, activar GitHub Actions en la configuración del repositorio y aplicar:
 
-| Key                                                        | Value                                               |
-| :--------------------------------------------------------- | :-------------------------------------------------- |
-| `Actions permissions`                                      | `Allow all actions and reusable workflows`          |
-| `Allow GitHub Actions to create and approve pull requests` | `false`                                             |
-| `Artifact and log retention`                               | `30 days`                                           |
-| `Fork pull request workflows from outside collaborators`   | `Require approval for all outside collaborators`    |
+| Clave                                                      | Valor |
+| :--------------------------------------------------------- | :---- |
+| `Actions permissions`                                      | `Allow all actions and reusable workflows` |
+| `Allow GitHub Actions to create and approve pull requests` | `false` |
+| `Artifact and log retention`                               | `30 days` |
+| `Fork pull request workflows from outside collaborators`   | `Require approval for all outside collaborators` |
 | `Workflow permissions`                                     | `Read repository contents and packages permissions` |
 
-## Recommended Extensions
+## Extensiones recomendadas
 
 * [C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)
 * [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)

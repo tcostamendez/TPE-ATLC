@@ -1,0 +1,9 @@
+circuit Commented {
+input a, b;
+output y;
+/* negate the first input before combining it */
+wire na;
+na = not a;
+/* this comment splits two valid statements */
+y = na or b;
+}

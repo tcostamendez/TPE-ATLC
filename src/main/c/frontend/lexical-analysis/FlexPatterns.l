@@ -10,80 +10,58 @@
 
 %{
 
-/**
- * @see https://westes.github.io/flex/manual/Definitions-Section.html#Definitions-Section
- */
-
-extern CompilationStatus ArithmeticOperatorLexemeAction(TokenLabel label);
-extern CompilationStatus EnterImportExpressionLexemeAction(FlexContext context);
-extern CompilationStatus EnterMultilineCommentLexemeAction(FlexContext context);
+extern CompilationStatus CommentContentLexemeAction();
+extern CompilationStatus CommentEndLexemeAction();
+extern CompilationStatus CommentLexemeAction(FlexContext context);
 extern CompilationStatus EOFLexemeAction();
+extern CompilationStatus IdentifierLexemeAction();
 extern CompilationStatus IgnoredLexemeAction();
-extern CompilationStatus IntegerLexemeAction();
-extern CompilationStatus LeaveImportExpressionLexemeAction();
-extern CompilationStatus LeaveMultilineCommentLexemeAction();
-extern CompilationStatus ParenthesisLexemeAction(TokenLabel label);
-extern CompilationStatus SubexpressionLexemeAction();
+extern CompilationStatus SymbolLexemeAction(TokenLabel label);
 extern CompilationStatus UnknownLexemeAction();
 
 %}
 
-/**
- * Flex contexts (a.k.a. start conditions).
- *
- * @see https://westes.github.io/flex/manual/Start-Conditions.html
- */
-%x IMPORT_EXPRESSION
 %x MULTILINE_COMMENT
 
-/**
- * Reusable patterns.
- *
- * @see https://westes.github.io/flex/manual/Matching.html
- * @see https://westes.github.io/flex/manual/Patterns.html
- */
 whitespace			[[:space:]]+
+identifier			[_[:alpha:]][_[:alnum:]]*
 
 %%
 
-%{
+"/*"								{ return CommentLexemeAction(MULTILINE_COMMENT); }
+<MULTILINE_COMMENT>"*/"				{ return CommentEndLexemeAction(); }
+<MULTILINE_COMMENT>[^*]+			{ return CommentContentLexemeAction(); }
+<MULTILINE_COMMENT>.				{ return CommentContentLexemeAction(); }
 
-/**
- * @see https://westes.github.io/flex/manual/Rules-Section.html#Rules-Section
- */
+"circuit"							{ return SymbolLexemeAction(CIRCUIT); }
+"input"								{ return SymbolLexemeAction(INPUT); }
+"output"							{ return SymbolLexemeAction(OUTPUT); }
+"wire"								{ return SymbolLexemeAction(WIRE); }
+"reg"								{ return SymbolLexemeAction(REG); }
+"on"								{ return SymbolLexemeAction(ON); }
+"rising_edge"						{ return SymbolLexemeAction(RISING_EDGE); }
+"and"								{ return SymbolLexemeAction(AND); }
+"or"								{ return SymbolLexemeAction(OR); }
+"xor"								{ return SymbolLexemeAction(XOR); }
+"not"								{ return SymbolLexemeAction(NOT); }
 
-%}
+"<="								{ return SymbolLexemeAction(NEXT_ASSIGN); }
+"->"								{ return SymbolLexemeAction(ARROW); }
+"="									{ return SymbolLexemeAction(ASSIGN); }
+"{"									{ return SymbolLexemeAction(OPEN_BRACE); }
+"}"									{ return SymbolLexemeAction(CLOSE_BRACE); }
+"("									{ return SymbolLexemeAction(OPEN_PARENTHESIS); }
+")"									{ return SymbolLexemeAction(CLOSE_PARENTHESIS); }
+","									{ return SymbolLexemeAction(COMMA); }
+";"									{ return SymbolLexemeAction(SEMICOLON); }
 
-"{"									{ return EnterImportExpressionLexemeAction(IMPORT_EXPRESSION); }
-<IMPORT_EXPRESSION>[^{}]+			{ return SubexpressionLexemeAction(); }
-<IMPORT_EXPRESSION>"}"				{ return LeaveImportExpressionLexemeAction(); }
-<IMPORT_EXPRESSION>.				{ return UnknownLexemeAction(); }
+{identifier}							{ return IdentifierLexemeAction(); }
+{whitespace}							{ return IgnoredLexemeAction(); }
+.										{ return UnknownLexemeAction(); }
 
-"/*"								{ return EnterMultilineCommentLexemeAction(MULTILINE_COMMENT); }
-<MULTILINE_COMMENT>"*/"				{ return LeaveMultilineCommentLexemeAction(); }
-<MULTILINE_COMMENT>[^*]+			{ return IgnoredLexemeAction(); }
-<MULTILINE_COMMENT>.				{ return IgnoredLexemeAction(); }
-
-"-"									{ return ArithmeticOperatorLexemeAction(SUB); }
-"*"									{ return ArithmeticOperatorLexemeAction(MUL); }
-"/"									{ return ArithmeticOperatorLexemeAction(DIV); }
-"+"									{ return ArithmeticOperatorLexemeAction(ADD); }
-
-"("									{ return ParenthesisLexemeAction(OPEN_PARENTHESIS); }
-")"									{ return ParenthesisLexemeAction(CLOSE_PARENTHESIS); }
-
-[[:digit:]]+						{ return IntegerLexemeAction(); }
-
-{whitespace}						{ return IgnoredLexemeAction(); }
-.									{ return UnknownLexemeAction(); }
-
-<<EOF>>								{ return EOFLexemeAction(); }
+<<EOF>>									{ return EOFLexemeAction(); }
 
 %%
-
-/**
- * @see https://westes.github.io/flex/manual/User-Code-Section.html#User-Code-Section
- */
 
 #include "FlexActions.h"
 #include "FlexExport.h"

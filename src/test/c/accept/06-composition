@@ -1,0 +1,11 @@
+circuit AndGate {
+input a, b;
+output out;
+out = a and b;
+}
+
+circuit Main {
+input x, y;
+output z;
+AndGate(a=x, b=y) -> (out=z);
+}

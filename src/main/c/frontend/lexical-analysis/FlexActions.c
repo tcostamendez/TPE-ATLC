@@ -3,9 +3,55 @@
 /* MODULE INTERNAL STATE */
 
 static bool _logIgnoredLexemes = true;
-static InputBuffer * _inputBuffer = NULL;
 static LexicalAnalyzer * _lexicalAnalyzer = NULL;
 static Logger * _logger = NULL;
+
+static YYLTYPE * _currentLocation() {
+	return (YYLTYPE *) _lexicalAnalyzer->location;
+}
+
+static void _consumeCurrentLexeme() {
+	YYLTYPE * location = _currentLocation();
+	const char * lexeme = yyget_text(_lexicalAnalyzer->scanner);
+	const unsigned int length = yyget_leng(_lexicalAnalyzer->scanner);
+	unsigned int line = yyget_lineno(_lexicalAnalyzer->scanner);
+	unsigned int column = _lexicalAnalyzer->column;
+	unsigned int firstLine = line;
+	unsigned int firstColumn = column;
+
+	for (unsigned int i = 0; i < length; ++i) {
+		if (lexeme[i] == '\n') {
+			++line;
+			column = 1;
+		}
+		else {
+			++column;
+		}
+	}
+
+	if (location != NULL) {
+		location->first_line = firstLine;
+		location->first_column = firstColumn;
+		location->last_line = line;
+		location->last_column = length == 0 ? firstColumn : (column == 1 ? 1 : column - 1);
+	}
+
+	_lexicalAnalyzer->column = column;
+}
+
+static void _logLexicalError(const char * reason, const char * lexeme) {
+	YYLTYPE * location = _currentLocation();
+	const int line = (location != NULL && 0 < location->first_line) ? location->first_line : 1;
+	const int column = (location != NULL && 0 < location->first_column) ? location->first_column : 1;
+	if (lexeme != NULL) {
+		char * escapedLexeme = escape(lexeme);
+		logError(_logger, "Frontend lexical error at line %d, column %d: %s near \"%s\".", line, column, reason, escapedLexeme != NULL ? escapedLexeme : "<unavailable>");
+		free(escapedLexeme);
+	}
+	else {
+		logError(_logger, "Frontend lexical error at line %d, column %d: %s.", line, column, reason);
+	}
+}
 
 /** Shutdown module's internal state. */
 void _shutdownFlexActionsModule() {
@@ -14,148 +60,158 @@ void _shutdownFlexActionsModule() {
 		destroyLogger(_logger);
 		_logger = NULL;
 	}
-	if (_inputBuffer != NULL) {
-		destroyInputBuffer(_inputBuffer);
-		_inputBuffer = NULL;
-	}
 	_lexicalAnalyzer = NULL;
 }
 
 ModuleDestructor initializeFlexActionsModule(LexicalAnalyzer * lexicalAnalyzer) {
-	_inputBuffer = NULL;
 	_lexicalAnalyzer = lexicalAnalyzer;
 	_logger = createLogger("FlexActions");
 	_logIgnoredLexemes = getBooleanOrDefault("LOG_IGNORED_LEXEMES", _logIgnoredLexemes);
 	return _shutdownFlexActionsModule;
 }
 
-/* PRIVATE FUNCTIONS */
-
-static void _logTokenAction(const char * actionName, Token * token);
-
-/**
- * Logs a lexical-analyzer action over a token in DEBUGGING level.
- */
 static void _logTokenAction(const char * actionName, Token * token) {
-	char * _lexeme = escape(token->lexeme);
-	logDebugging(_logger, WARNING_COLOR "%s" DEFAULT_COLOR ": Token(context=%d, label=%d, length=%d, lexeme=%s\"%s\"%s, line=%d, semanticValue=%p)",
+	if (token == NULL) {
+		logError(_logger, "%s could not log a token because allocation failed.", actionName);
+		return;
+	}
+
+	char * escapedLexeme = escape(token->lexeme);
+	logDebugging(_logger, WARNING_COLOR "%s" DEFAULT_COLOR ": Token(context=%d, label=%d, length=%d, lexeme=%s\"%s\"%s, line=%d, column=%d, semanticValue=%p)",
 		actionName,
 		token->context,
 		token->label,
 		token->length,
-		INFORMATION_COLOR, _lexeme, DEFAULT_COLOR,
+		INFORMATION_COLOR, escapedLexeme != NULL ? escapedLexeme : "<unavailable>", DEFAULT_COLOR,
 		token->line,
+		token->column,
 		token->semanticValue);
-	free(_lexeme);
-	_lexeme = NULL;
+	free(escapedLexeme);
 }
 
-/* PUBLIC FUNCTIONS */
-
-CompilationStatus ArithmeticOperatorLexemeAction(TokenLabel label) {
+static CompilationStatus _pushSimpleToken(TokenLabel label, const char * actionName) {
+	_consumeCurrentLexeme();
 	Token * token = createToken(_lexicalAnalyzer, label);
+	if (token == NULL) {
+		return OUT_OF_MEMORY;
+	}
+	_logTokenAction(actionName, token);
+	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
+	destroyToken(token);
+	return status;
+}
+
+CompilationStatus CommentLexemeAction(FlexContext context) {
+	_consumeCurrentLexeme();
+	if (_logIgnoredLexemes) {
+		Token * token = createToken(_lexicalAnalyzer, IGNORED);
+		if (token == NULL) {
+			return OUT_OF_MEMORY;
+		}
+		_logTokenAction(__FUNCTION__, token);
+		destroyToken(token);
+	}
+	enterLexicalAnalyzerContext(_lexicalAnalyzer, context);
+	return IN_PROGRESS;
+}
+
+CompilationStatus CommentContentLexemeAction() {
+	_consumeCurrentLexeme();
+	if (_logIgnoredLexemes) {
+		Token * token = createToken(_lexicalAnalyzer, IGNORED);
+		if (token == NULL) {
+			return OUT_OF_MEMORY;
+		}
+		_logTokenAction(__FUNCTION__, token);
+		destroyToken(token);
+	}
+	return IN_PROGRESS;
+}
+
+CompilationStatus CommentEndLexemeAction() {
+	_consumeCurrentLexeme();
+	if (_logIgnoredLexemes) {
+		Token * token = createToken(_lexicalAnalyzer, IGNORED);
+		if (token == NULL) {
+			return OUT_OF_MEMORY;
+		}
+		_logTokenAction(__FUNCTION__, token);
+		destroyToken(token);
+	}
+	leaveLexicalAnalyzerContext(_lexicalAnalyzer);
+	return IN_PROGRESS;
+}
+
+CompilationStatus EOFLexemeAction() {
+	_consumeCurrentLexeme();
+	FlexContext context = currentLexicalAnalyzerContext(_lexicalAnalyzer);
+	if (0 < context) {
+		const char * reason;
+		switch (context) {
+			case 1:
+				reason = "unterminated multiline comment";
+				break;
+			default:
+				reason = "unterminated lexical context";
+				break;
+		}
+		_logLexicalError(reason, NULL);
+		return FAILED;
+	}
+	Token * token = createToken(_lexicalAnalyzer, 0);
+	if (token == NULL) {
+		return OUT_OF_MEMORY;
+	}
 	_logTokenAction(__FUNCTION__, token);
 	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
 	destroyToken(token);
 	return status;
 }
 
-CompilationStatus EnterImportExpressionLexemeAction(FlexContext context) {
-	if (_logIgnoredLexemes) {
-		Token * token = createToken(_lexicalAnalyzer, OPEN_BRACE);
-		_logTokenAction(__FUNCTION__, token);
-		destroyToken(token);
+CompilationStatus IdentifierLexemeAction() {
+	_consumeCurrentLexeme();
+	Token * token = createToken(_lexicalAnalyzer, IDENTIFIER);
+	if (token == NULL) {
+		return OUT_OF_MEMORY;
 	}
-	enterLexicalAnalyzerContext(_lexicalAnalyzer, context);
-	return IN_PROGRESS;
-}
-
-CompilationStatus EnterMultilineCommentLexemeAction(FlexContext context) {
-	if (_logIgnoredLexemes) {
-		Token * token = createToken(_lexicalAnalyzer, OPEN_COMMENT);
-		_logTokenAction(__FUNCTION__, token);
+	token->semanticValue->string = calloc(token->length + 1, sizeof(char));
+	if (token->semanticValue->string == NULL) {
 		destroyToken(token);
+		logError(_logger, "The compiler ran out of memory while storing an identifier.");
+		return OUT_OF_MEMORY;
 	}
-	enterLexicalAnalyzerContext(_lexicalAnalyzer, context);
-	return IN_PROGRESS;
-}
-
-CompilationStatus EOFLexemeAction() {
-	CompilationStatus status = IN_PROGRESS;
-	Token * token = createToken(_lexicalAnalyzer, 0);
+	strcpy(token->semanticValue->string, token->lexeme);
 	_logTokenAction(__FUNCTION__, token);
-	if (!popInputBuffer(_lexicalAnalyzer)) {
-		status = pushToken(_lexicalAnalyzer, token);
-		FlexContext context = currentLexicalAnalyzerContext(_lexicalAnalyzer);
-		if (0 < context) {
-			logError(_logger, "The final context is not closed (context=%d).", context);
-			status = FAILED;
-		}
-	}
+	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
 	destroyToken(token);
 	return status;
 }
 
 CompilationStatus IgnoredLexemeAction() {
+	_consumeCurrentLexeme();
 	if (_logIgnoredLexemes) {
 		Token * token = createToken(_lexicalAnalyzer, IGNORED);
+		if (token == NULL) {
+			return OUT_OF_MEMORY;
+		}
 		_logTokenAction(__FUNCTION__, token);
 		destroyToken(token);
 	}
 	return IN_PROGRESS;
 }
 
-CompilationStatus IntegerLexemeAction() {
-	Token * token = createToken(_lexicalAnalyzer, INTEGER);
-	token->semanticValue->integer = atoi(token->lexeme);
-	_logTokenAction(__FUNCTION__, token);
-	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
-	destroyToken(token);
-	return status;
-}
-
-CompilationStatus LeaveImportExpressionLexemeAction() {
-	pushInputBuffer(_inputBuffer);
-	leaveLexicalAnalyzerContext(_lexicalAnalyzer);
-	if (_logIgnoredLexemes) {
-		Token * token = createToken(_lexicalAnalyzer, CLOSE_BRACE);
-		_logTokenAction(__FUNCTION__, token);
-		destroyToken(token);
-	}
-	return IN_PROGRESS;
-}
-
-CompilationStatus LeaveMultilineCommentLexemeAction() {
-	leaveLexicalAnalyzerContext(_lexicalAnalyzer);
-	if (_logIgnoredLexemes) {
-		Token * token = createToken(_lexicalAnalyzer, CLOSE_COMMENT);
-		_logTokenAction(__FUNCTION__, token);
-		destroyToken(token);
-	}
-	return IN_PROGRESS;
-}
-
-CompilationStatus ParenthesisLexemeAction(TokenLabel label) {
-	Token * token = createToken(_lexicalAnalyzer, label);
-	_logTokenAction(__FUNCTION__, token);
-	CompilationStatus status = pushToken(_lexicalAnalyzer, token);
-	destroyToken(token);
-	return status;
-}
-
-CompilationStatus SubexpressionLexemeAction() {
-	Token * token = createToken(_lexicalAnalyzer, IGNORED);
-	_inputBuffer = createInputBuffer(_lexicalAnalyzer, token->lexeme);
-	if (_logIgnoredLexemes) {
-		_logTokenAction(__FUNCTION__, token);
-	}
-	destroyToken(token);
-	return IN_PROGRESS;
+CompilationStatus SymbolLexemeAction(TokenLabel label) {
+	return _pushSimpleToken(label, __FUNCTION__);
 }
 
 CompilationStatus UnknownLexemeAction() {
+	_consumeCurrentLexeme();
 	Token * token = createToken(_lexicalAnalyzer, UNKNOWN);
+	if (token == NULL) {
+		return OUT_OF_MEMORY;
+	}
 	_logTokenAction(__FUNCTION__, token);
+	_logLexicalError("unexpected lexeme", token->lexeme);
 	destroyToken(token);
 	return FAILED;
 }

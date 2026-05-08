@@ -1,0 +1,19 @@
+circuit NotGate {
+input a;
+output y;
+y = not a;
+}
+
+circuit AndGate {
+input a, b;
+output y;
+y = a and b;
+}
+
+circuit Main {
+input x, z;
+output out;
+wire nx;
+NotGate(a=x) -> (y=nx);
+AndGate(a=nx, b=z) -> (y=out);
+}

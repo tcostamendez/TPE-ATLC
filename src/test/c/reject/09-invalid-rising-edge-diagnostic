@@ -1,0 +1,9 @@
+circuit Broken {
+input clk, d;
+output q;
+reg state;
+on rising_edge clk {
+state <= d;
+}
+q = state;
+}

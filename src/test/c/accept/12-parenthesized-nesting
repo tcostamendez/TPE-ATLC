@@ -1,0 +1,5 @@
+circuit Nested {
+input a, b, c, d;
+output y;
+y = not ((a or b) and (c xor (not d)));
+}

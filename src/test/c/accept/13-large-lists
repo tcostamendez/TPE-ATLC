@@ -1,0 +1,23 @@
+circuit FanIn {
+input a0, a1, a2, a3, a4, a5, a6, a7;
+output y0, y1, y2, y3;
+wire w0, w1, w2, w3, w4, w5, w6, w7;
+w0 = a0 and a1;
+w1 = a2 and a3;
+w2 = a4 and a5;
+w3 = a6 and a7;
+w4 = w0 or w1;
+w5 = w2 or w3;
+w6 = w4 xor w5;
+w7 = not w6;
+y0 = w4;
+y1 = w5;
+y2 = w6;
+y3 = w7;
+}
+
+circuit Wrapper {
+input i0, i1, i2, i3, i4, i5, i6, i7;
+output o0, o1, o2, o3;
+FanIn(a0=i0, a1=i1, a2=i2, a3=i3, a4=i4, a5=i5, a6=i6, a7=i7) -> (y0=o0, y1=o1, y2=o2, y3=o3);
+}

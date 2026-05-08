@@ -1,0 +1,7 @@
+circuit IdentifierVariants {
+input _a, a1, signal_2;
+output out_1;
+wire _tmp_3;
+_tmp_3 = (_a and a1) xor signal_2;
+out_1 = not _tmp_3;
+}
