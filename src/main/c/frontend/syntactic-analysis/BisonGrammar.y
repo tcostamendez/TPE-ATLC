@@ -31,6 +31,7 @@ void yyerror(const YYLTYPE * location, const char * message) {
 %define api.value.union.name SemanticValue
 %define parse.error detailed
 %locations
+%expect 0
 
 %union {
 	char * string;
