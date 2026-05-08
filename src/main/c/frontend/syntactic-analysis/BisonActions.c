@@ -314,16 +314,23 @@ Statement * CombinationalAssignmentStatementSemanticAction(char * target, Expres
 		return NULL;
 	}
 
-	Statement * statement = _allocateNode(sizeof(Statement));
-	if (statement == NULL) {
+	CombinationalAssignment * assignment = _allocateNode(sizeof(CombinationalAssignment));
+	if (assignment == NULL) {
 		free(target);
 		destroyExpression(expression);
 		return NULL;
 	}
+	assignment->target = target;
+	assignment->expression = expression;
+
+	Statement * statement = _allocateNode(sizeof(Statement));
+	if (statement == NULL) {
+		destroyCombinationalAssignment(assignment);
+		return NULL;
+	}
 
 	statement->type = COMBINATIONAL_ASSIGNMENT_STATEMENT;
-	statement->combinationalAssignment.target = target;
-	statement->combinationalAssignment.expression = expression;
+	statement->combinationalAssignment = assignment;
 	return statement;
 }
 

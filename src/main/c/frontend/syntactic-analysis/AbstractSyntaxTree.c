@@ -165,6 +165,15 @@ void destroyExpression(Expression * expression) {
 	free(visitedStack);
 }
 
+void destroyCombinationalAssignment(CombinationalAssignment * assignment) {
+	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
+	if (assignment != NULL) {
+		free(assignment->target);
+		destroyExpression(assignment->expression);
+		free(assignment);
+	}
+}
+
 void destroySequentialAssignment(SequentialAssignment * assignment) {
 	logDebugging(_logger, "Executing destructor: %s", __FUNCTION__);
 	if (assignment != NULL) {
@@ -208,8 +217,7 @@ void destroyStatement(Statement * statement) {
 	if (statement != NULL) {
 		switch (statement->type) {
 			case COMBINATIONAL_ASSIGNMENT_STATEMENT:
-				free(statement->combinationalAssignment.target);
-				destroyExpression(statement->combinationalAssignment.expression);
+				destroyCombinationalAssignment(statement->combinationalAssignment);
 				break;
 			case CLOCK_BLOCK_STATEMENT:
 				destroyClockBlock(statement->clockBlock);

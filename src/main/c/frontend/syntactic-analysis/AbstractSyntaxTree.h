@@ -20,6 +20,7 @@ typedef struct Connection Connection;
 typedef struct ConnectionList ConnectionList;
 typedef struct Declaration Declaration;
 typedef struct Expression Expression;
+typedef struct CombinationalAssignment CombinationalAssignment;
 typedef struct SequentialAssignment SequentialAssignment;
 typedef struct SequentialAssignmentList SequentialAssignmentList;
 typedef struct ClockBlock ClockBlock;
@@ -103,6 +104,11 @@ struct Expression {
 	};
 };
 
+struct CombinationalAssignment {
+	char * target;
+	Expression * expression;
+};
+
 struct SequentialAssignment {
 	char * target;
 	Expression * expression;
@@ -128,10 +134,7 @@ struct Instance {
 struct Statement {
 	StatementType type;
 	union {
-		struct {
-			char * target;
-			Expression * expression;
-		} combinationalAssignment;
+		CombinationalAssignment * combinationalAssignment;
 		ClockBlock * clockBlock;
 		Instance * instance;
 	};
@@ -171,6 +174,7 @@ void destroyConnection(Connection * connection);
 void destroyConnectionList(ConnectionList * connectionList);
 void destroyDeclaration(Declaration * declaration);
 void destroyExpression(Expression * expression);
+void destroyCombinationalAssignment(CombinationalAssignment * assignment);
 void destroySequentialAssignment(SequentialAssignment * assignment);
 void destroySequentialAssignmentList(SequentialAssignmentList * assignmentList);
 void destroyClockBlock(ClockBlock * clockBlock);
