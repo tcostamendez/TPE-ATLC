@@ -146,7 +146,16 @@ CompilationStatus EOFLexemeAction() {
 	_consumeCurrentLexeme();
 	FlexContext context = currentLexicalAnalyzerContext(_lexicalAnalyzer);
 	if (0 < context) {
-		_logLexicalError("unterminated multiline comment", NULL);
+		const char * reason;
+		switch (context) {
+			case 1:
+				reason = "unterminated multiline comment";
+				break;
+			default:
+				reason = "unterminated lexical context";
+				break;
+		}
+		_logLexicalError(reason, NULL);
 		return FAILED;
 	}
 	Token * token = createToken(_lexicalAnalyzer, 0);
