@@ -31,6 +31,7 @@ name: "CI"
 on:
   pull_request:
     types:
-      - closed
+      - opened
       - reopened
+      - synchronize
   push:
