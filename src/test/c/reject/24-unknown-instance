@@ -1,0 +1,5 @@
+circuit Main {
+input a;
+output y;
+UnknownGate(a=a) -> (y=y);
+}

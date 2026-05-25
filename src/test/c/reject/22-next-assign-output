@@ -1,0 +1,7 @@
+circuit Broken {
+input a, clk;
+output y;
+on rising_edge(clk) {
+y <= a;
+}
+}

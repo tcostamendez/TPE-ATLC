@@ -50,6 +50,7 @@ void yyerror(const YYLTYPE * location, const char * message) {
 	SequentialAssignment * sequentialAssignment;
 	SequentialAssignmentList * sequentialAssignmentList;
 	Statement * statement;
+	EdgeType edgeType;
 }
 
 %destructor { free($$); } <string>
@@ -76,6 +77,7 @@ void yyerror(const YYLTYPE * location, const char * message) {
 %token REG
 %token ON
 %token RISING_EDGE
+%token FALLING_EDGE
 %token AND
 %token OR
 %token XOR
@@ -101,6 +103,7 @@ void yyerror(const YYLTYPE * location, const char * message) {
 %type <circuitList> circuit_list
 %type <clockBlock> clock_block
 %type <declaration> declaration
+%type <edgeType> edge_event
 %type <expression> expression
 %type <identifierList> identifier_list
 %type <instance> instance
@@ -154,8 +157,12 @@ statement: IDENTIFIER ASSIGN expression SEMICOLON						{ $$ = CombinationalAssig
 	| instance SEMICOLON												{ $$ = InstanceStatementSemanticAction($1); }
 	;
 
-clock_block: ON RISING_EDGE OPEN_PARENTHESIS IDENTIFIER CLOSE_PARENTHESIS OPEN_BRACE sequential_assignment_list CLOSE_BRACE
-																		{ $$ = ClockBlockSemanticAction($4, $7); }
+clock_block: ON edge_event OPEN_PARENTHESIS IDENTIFIER CLOSE_PARENTHESIS OPEN_BRACE sequential_assignment_list CLOSE_BRACE
+																		{ $$ = ClockBlockSemanticAction($2, $4, $7); }
+	;
+
+edge_event: RISING_EDGE													{ $$ = RISING_EDGE_EVENT; }
+	| FALLING_EDGE														{ $$ = FALLING_EDGE_EVENT; }
 	;
 
 sequential_assignment_list: sequential_assignment						{ $$ = SequentialAssignmentListSemanticAction($1); }

@@ -7,6 +7,7 @@
 #include "support/type/CompilationStatus.h"
 #include "support/type/CompilerState.h"
 #include "support/type/ModuleDestructor.h"
+#include <string.h>
 
 /**
  * The main entry-point of the entire application. If you use "strtok" to
@@ -26,8 +27,21 @@ const int main(const int length, const char ** arguments) {
 		logDebugging(logger, "Argument %d: \"%s\"", k, arguments[k]);
 	}
 	CompilerState compilerState = {
-		.abstractSyntaxTree = NULL
+		.abstractSyntaxTree = NULL,
+		.semanticModel = NULL,
+		.topCircuitName = NULL
 	};
+	for (int k = 1; k < length; ++k) {
+		if (strcmp(arguments[k], "--top") == 0 && k + 1 < length) {
+			compilerState.topCircuitName = arguments[++k];
+		}
+		else {
+			logError(logger, "Unknown argument: \"%s\".", arguments[k]);
+			destroyLogger(logger);
+			destroyLexicalAnalyzer(lexicalAnalyzer);
+			return FAILED;
+		}
+	}
 	ModuleDestructor moduleDestructors[] = {
 		initializeAbstractSyntaxTreeModule(),
 		initializeFlexActionsModule(lexicalAnalyzer),
@@ -47,13 +61,12 @@ const int main(const int length, const char ** arguments) {
 	Program * program = compilerState.abstractSyntaxTree;
 	if (compilationStatus == SUCCEEDED && program != NULL) {
 		logDebugging(logger, "Frontend accepted the input program.");
-		logDebugging(logger, "Stage 2 ends after AST construction; semantic analysis belongs to stage 3.");
 		ComputationResult computationResult = executeCalculator(&compilerState);
 		if (computationResult.succeeded) {
 			executeGenerator(&compilerState);
 		}
 		else {
-			logError(logger, "The stage 2 stubs could not confirm the AST hand-off.");
+			logError(logger, "Semantic analysis rejected the input program.");
 			compilationStatus = FAILED;
 		}
 	}
@@ -64,6 +77,7 @@ const int main(const int length, const char ** arguments) {
 		}
 	}
 	logDebugging(logger, "Releasing AST resources...");
+	destroySemanticModel(compilerState.semanticModel);
 	destroyProgram(program);
 	for (int k = (sizeof(moduleDestructors)/sizeof(ModuleDestructor)) - 1; 0 <= k; --k) {
 		moduleDestructors[k]();

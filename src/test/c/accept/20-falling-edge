@@ -1,0 +1,9 @@
+circuit FallingEdgeRegister {
+input d, clk;
+output q;
+reg state;
+q = state;
+on falling_edge(clk) {
+state <= d;
+}
+}
