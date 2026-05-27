@@ -1,0 +1,11 @@
+circuit First {
+input a;
+output y;
+y = a;
+}
+
+circuit Second {
+input b;
+output z;
+z = b;
+}

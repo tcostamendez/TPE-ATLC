@@ -8,6 +8,42 @@ static Logger * _logger = NULL;
 static void _emitExpression(Expression * expression);
 static void _emitCircuitFunctions(SemanticCircuit * circuit);
 
+static void _emitStateTypeName(const char * circuitName) {
+	printf("State_c_%s", circuitName);
+}
+
+static void _emitInitFunctionName(const char * circuitName) {
+	printf("init_c_%s", circuitName);
+}
+
+static void _emitFreeFunctionName(const char * circuitName) {
+	printf("free_c_%s", circuitName);
+}
+
+static void _emitSettleFunctionName(const char * circuitName) {
+	printf("settle_c_%s", circuitName);
+}
+
+static void _emitTickFunctionName(const char * circuitName) {
+	printf("tick_c_%s", circuitName);
+}
+
+static void _emitSignalFieldName(const char * signalName) {
+	printf("sig_%s", signalName);
+}
+
+static void _emitPreviousSignalFieldName(const char * signalName) {
+	printf("prev_sig_%s", signalName);
+}
+
+static void _emitInputVariableName(const char * signalName) {
+	printf("in_sig_%s", signalName);
+}
+
+static void _emitInstanceFieldName(size_t index) {
+	printf("inst_%zu", index);
+}
+
 void _shutdownGeneratorModule() {
 	if (_logger != NULL) {
 		logDebugging(_logger, "Destroying module: Generator...");
@@ -36,9 +72,13 @@ static size_t _instanceIndex(CircuitItemList * limit, Statement * statement) {
 
 static void _emitSignalFields(SemanticCircuit * circuit) {
 	for (size_t index = 0; index < circuit->signalCount; ++index) {
-		printf("\tint %s;\n", circuit->signals[index].name);
+		printf("\tint ");
+		_emitSignalFieldName(circuit->signals[index].name);
+		printf(";\n");
 		if (circuit->signals[index].type == INPUT_DECLARATION) {
-			printf("\tint prev_%s;\n", circuit->signals[index].name);
+			printf("\tint ");
+			_emitPreviousSignalFieldName(circuit->signals[index].name);
+			printf(";\n");
 		}
 	}
 }
@@ -47,7 +87,11 @@ static void _emitInstanceFields(SemanticCircuit * circuit) {
 	size_t index = 0;
 	for (CircuitItemList * node = circuit->ast->items; node != NULL; node = node->next) {
 		if (node->item->type == STATEMENT_ITEM && node->item->statement->type == INSTANCE_STATEMENT) {
-			printf("\tState_%s * inst_%zu;\n", node->item->statement->instance->circuitName, index++);
+			printf("\t");
+			_emitStateTypeName(node->item->statement->instance->circuitName);
+			printf(" * ");
+			_emitInstanceFieldName(index++);
+			printf(";\n");
 		}
 	}
 }
@@ -59,7 +103,9 @@ static void _emitExpression(Expression * expression) {
 	}
 	switch (expression->type) {
 		case IDENTIFIER_EXPRESSION:
-			printf("(state->%s)", expression->identifier);
+			printf("(state->");
+			_emitSignalFieldName(expression->identifier);
+			printf(")");
 			break;
 		case UNARY_EXPRESSION:
 			printf("(!");
@@ -86,35 +132,75 @@ static void _emitExpression(Expression * expression) {
 
 static void _emitInstanceSettle(Instance * instance, size_t index) {
 	for (ConnectionList * node = instance->inputConnections; node != NULL; node = node->next) {
-		printf("\tstate->inst_%zu->%s = state->%s;\n", index, node->connection->portName, node->connection->signalName);
+		printf("\tstate->");
+		_emitInstanceFieldName(index);
+		printf("->");
+		_emitSignalFieldName(node->connection->portName);
+		printf(" = state->");
+		_emitSignalFieldName(node->connection->signalName);
+		printf(";\n");
 	}
-	printf("\tsettle_%s(state->inst_%zu);\n", instance->circuitName, index);
+	printf("\t");
+	_emitSettleFunctionName(instance->circuitName);
+	printf("(state->");
+	_emitInstanceFieldName(index);
+	printf(");\n");
 	for (ConnectionList * node = instance->outputConnections; node != NULL; node = node->next) {
-		printf("\tstate->%s = state->inst_%zu->%s;\n", node->connection->signalName, index, node->connection->portName);
+		printf("\tstate->");
+		_emitSignalFieldName(node->connection->signalName);
+		printf(" = state->");
+		_emitInstanceFieldName(index);
+		printf("->");
+		_emitSignalFieldName(node->connection->portName);
+		printf(";\n");
 	}
 }
 
 static void _emitInstanceTick(Instance * instance, size_t index) {
-	printf("\ttick_%s(state->inst_%zu", instance->circuitName, index);
+	printf("\t");
+	_emitTickFunctionName(instance->circuitName);
+	printf("(state->");
+	_emitInstanceFieldName(index);
 	for (ConnectionList * node = instance->inputConnections; node != NULL; node = node->next) {
-		printf(", state->%s", node->connection->signalName);
+		printf(", state->");
+		_emitSignalFieldName(node->connection->signalName);
 	}
 	printf(");\n");
 	for (ConnectionList * node = instance->outputConnections; node != NULL; node = node->next) {
-		printf("\tstate->%s = state->inst_%zu->%s;\n", node->connection->signalName, index, node->connection->portName);
+		printf("\tstate->");
+		_emitSignalFieldName(node->connection->signalName);
+		printf(" = state->");
+		_emitInstanceFieldName(index);
+		printf("->");
+		_emitSignalFieldName(node->connection->portName);
+		printf(";\n");
 	}
 }
 
 static void _emitInitFunction(SemanticCircuit * circuit) {
-	printf("static void init_%s(State_%s * state) {\n", circuit->name, circuit->name);
+	printf("void ");
+	_emitInitFunctionName(circuit->name);
+	printf("(");
+	_emitStateTypeName(circuit->name);
+	printf(" * state) {\n");
 	printf("\tmemset(state, 0, sizeof(*state));\n");
 	size_t index = 0;
 	for (CircuitItemList * node = circuit->ast->items; node != NULL; node = node->next) {
 		if (node->item->type == STATEMENT_ITEM && node->item->statement->type == INSTANCE_STATEMENT) {
 			Instance * instance = node->item->statement->instance;
-			printf("\tstate->inst_%zu = calloc(1, sizeof(State_%s));\n", index, instance->circuitName);
-			printf("\tif (state->inst_%zu == NULL) { fprintf(stderr, \"runtime allocation failed\\n\"); exit(2); }\n", index);
-			printf("\tinit_%s(state->inst_%zu);\n", instance->circuitName, index);
+			printf("\tstate->");
+			_emitInstanceFieldName(index);
+			printf(" = calloc(1, sizeof(");
+			_emitStateTypeName(instance->circuitName);
+			printf("));\n");
+			printf("\tif (state->");
+			_emitInstanceFieldName(index);
+			printf(" == NULL) { fprintf(stderr, \"runtime allocation failed\\n\"); exit(2); }\n");
+			printf("\t");
+			_emitInitFunctionName(instance->circuitName);
+			printf("(state->");
+			_emitInstanceFieldName(index);
+			printf(");\n");
 			++index;
 		}
 	}
@@ -122,12 +208,25 @@ static void _emitInitFunction(SemanticCircuit * circuit) {
 }
 
 static void _emitFreeFunction(SemanticCircuit * circuit) {
-	printf("static void free_%s(State_%s * state) {\n", circuit->name, circuit->name);
+	printf("void ");
+	_emitFreeFunctionName(circuit->name);
+	printf("(");
+	_emitStateTypeName(circuit->name);
+	printf(" * state) {\n");
+	printf("\t(void) state;\n");
 	size_t index = 0;
 	for (CircuitItemList * node = circuit->ast->items; node != NULL; node = node->next) {
 		if (node->item->type == STATEMENT_ITEM && node->item->statement->type == INSTANCE_STATEMENT) {
 			Instance * instance = node->item->statement->instance;
-			printf("\tif (state->inst_%zu != NULL) { free_%s(state->inst_%zu); free(state->inst_%zu); }\n", index, instance->circuitName, index, index);
+			printf("\tif (state->");
+			_emitInstanceFieldName(index);
+			printf(" != NULL) { ");
+			_emitFreeFunctionName(instance->circuitName);
+			printf("(state->");
+			_emitInstanceFieldName(index);
+			printf("); free(state->");
+			_emitInstanceFieldName(index);
+			printf("); }\n");
 			++index;
 		}
 	}
@@ -135,7 +234,11 @@ static void _emitFreeFunction(SemanticCircuit * circuit) {
 }
 
 static void _emitSettleFunction(SemanticCircuit * circuit) {
-	printf("static void settle_%s(State_%s * state) {\n", circuit->name, circuit->name);
+	printf("void ");
+	_emitSettleFunctionName(circuit->name);
+	printf("(");
+	_emitStateTypeName(circuit->name);
+	printf(" * state) {\n");
 	printf("\tfor (int __settle_iter = 0; __settle_iter < %zu; ++__settle_iter) {\n", circuit->signalCount + 1);
 	for (CircuitItemList * node = circuit->ast->items; node != NULL; node = node->next) {
 		if (node->item->type != STATEMENT_ITEM) {
@@ -143,7 +246,9 @@ static void _emitSettleFunction(SemanticCircuit * circuit) {
 		}
 		Statement * statement = node->item->statement;
 		if (statement->type == COMBINATIONAL_ASSIGNMENT_STATEMENT) {
-			printf("\t\tstate->%s = ", statement->combinationalAssignment->target);
+			printf("\t\tstate->");
+			_emitSignalFieldName(statement->combinationalAssignment->target);
+			printf(" = ");
 			_emitExpression(statement->combinationalAssignment->expression);
 			printf(" ? 1 : 0;\n");
 		}
@@ -156,29 +261,48 @@ static void _emitSettleFunction(SemanticCircuit * circuit) {
 }
 
 static void _emitTickFunction(SemanticCircuit * circuit) {
-	printf("static void tick_%s(State_%s * state", circuit->name, circuit->name);
+	printf("void ");
+	_emitTickFunctionName(circuit->name);
+	printf("(");
+	_emitStateTypeName(circuit->name);
+	printf(" * state");
 	for (size_t index = 0; index < circuit->signalCount; ++index) {
 		if (circuit->signals[index].type == INPUT_DECLARATION) {
-			printf(", int in_%s", circuit->signals[index].name);
+			printf(", int ");
+			_emitInputVariableName(circuit->signals[index].name);
 		}
 	}
 	printf(") {\n");
 	for (size_t index = 0; index < circuit->signalCount; ++index) {
 		if (circuit->signals[index].type == INPUT_DECLARATION) {
-			printf("\tstate->%s = in_%s ? 1 : 0;\n", circuit->signals[index].name, circuit->signals[index].name);
+			printf("\tstate->");
+			_emitSignalFieldName(circuit->signals[index].name);
+			printf(" = ");
+			_emitInputVariableName(circuit->signals[index].name);
+			printf(" ? 1 : 0;\n");
 		}
 	}
-	printf("\tsettle_%s(state);\n", circuit->name);
+	printf("\t");
+	_emitSettleFunctionName(circuit->name);
+	printf("(state);\n");
 	for (CircuitItemList * node = circuit->ast->items; node != NULL; node = node->next) {
 		if (node->item->type != STATEMENT_ITEM || node->item->statement->type != CLOCK_BLOCK_STATEMENT) {
 			continue;
 		}
 		ClockBlock * block = node->item->statement->clockBlock;
 		if (block->edgeType == RISING_EDGE_EVENT) {
-			printf("\tif (!state->prev_%s && state->%s) {\n", block->clockSignal, block->clockSignal);
+			printf("\tif (!state->");
+			_emitPreviousSignalFieldName(block->clockSignal);
+			printf(" && state->");
+			_emitSignalFieldName(block->clockSignal);
+			printf(") {\n");
 		}
 		else {
-			printf("\tif (state->prev_%s && !state->%s) {\n", block->clockSignal, block->clockSignal);
+			printf("\tif (state->");
+			_emitPreviousSignalFieldName(block->clockSignal);
+			printf(" && !state->");
+			_emitSignalFieldName(block->clockSignal);
+			printf(") {\n");
 		}
 		size_t assignmentIndex = 0;
 		for (SequentialAssignmentList * assignmentNode = block->assignments; assignmentNode != NULL; assignmentNode = assignmentNode->next) {
@@ -189,7 +313,9 @@ static void _emitTickFunction(SemanticCircuit * circuit) {
 		}
 		assignmentIndex = 0;
 		for (SequentialAssignmentList * assignmentNode = block->assignments; assignmentNode != NULL; assignmentNode = assignmentNode->next) {
-			printf("\t\tstate->%s = next_%zu;\n", assignmentNode->assignment->target, assignmentIndex++);
+			printf("\t\tstate->");
+			_emitSignalFieldName(assignmentNode->assignment->target);
+			printf(" = next_%zu;\n", assignmentIndex++);
 		}
 		printf("\t}\n");
 	}
@@ -198,10 +324,16 @@ static void _emitTickFunction(SemanticCircuit * circuit) {
 			_emitInstanceTick(node->item->statement->instance, _instanceIndex(circuit->ast->items, node->item->statement));
 		}
 	}
-	printf("\tsettle_%s(state);\n", circuit->name);
+	printf("\t");
+	_emitSettleFunctionName(circuit->name);
+	printf("(state);\n");
 	for (size_t index = 0; index < circuit->signalCount; ++index) {
 		if (circuit->signals[index].type == INPUT_DECLARATION) {
-			printf("\tstate->prev_%s = state->%s;\n", circuit->signals[index].name, circuit->signals[index].name);
+			printf("\tstate->");
+			_emitPreviousSignalFieldName(circuit->signals[index].name);
+			printf(" = state->");
+			_emitSignalFieldName(circuit->signals[index].name);
+			printf(";\n");
 		}
 	}
 	printf("}\n\n");
@@ -216,25 +348,40 @@ static void _emitCircuitFunctions(SemanticCircuit * circuit) {
 
 static void _emitMain(SemanticCircuit * top) {
 	printf("int main(void) {\n");
-	printf("\tState_%s state;\n", top->name);
-	printf("\tinit_%s(&state);\n", top->name);
+	printf("\t");
+	_emitStateTypeName(top->name);
+	printf(" state;\n");
+	printf("\t");
+	_emitInitFunctionName(top->name);
+	printf("(&state);\n");
 	printf("\tint cycles = 0;\n");
-	printf("\tif (scanf(\"%%d\", &cycles) != 1) { free_%s(&state); return 1; }\n", top->name);
+	printf("\tif (scanf(\"%%d\", &cycles) != 1) { ");
+	_emitFreeFunctionName(top->name);
+	printf("(&state); return 1; }\n");
 	printf("\tfor (int cycle = 0; cycle < cycles; ++cycle) {\n");
 	for (size_t index = 0; index < top->signalCount; ++index) {
 		if (top->signals[index].type == INPUT_DECLARATION) {
-			printf("\t\tint in_%s = 0;\n", top->signals[index].name);
+			printf("\t\tint ");
+			_emitInputVariableName(top->signals[index].name);
+			printf(" = 0;\n");
 		}
 	}
 	for (size_t index = 0; index < top->signalCount; ++index) {
 		if (top->signals[index].type == INPUT_DECLARATION) {
-			printf("\t\tif (scanf(\"%%d\", &in_%s) != 1) { free_%s(&state); return 1; }\n", top->signals[index].name, top->name);
+			printf("\t\tif (scanf(\"%%d\", &");
+			_emitInputVariableName(top->signals[index].name);
+			printf(") != 1) { ");
+			_emitFreeFunctionName(top->name);
+			printf("(&state); return 1; }\n");
 		}
 	}
-	printf("\t\ttick_%s(&state", top->name);
+	printf("\t\t");
+	_emitTickFunctionName(top->name);
+	printf("(&state");
 	for (size_t index = 0; index < top->signalCount; ++index) {
 		if (top->signals[index].type == INPUT_DECLARATION) {
-			printf(", in_%s", top->signals[index].name);
+			printf(", ");
+			_emitInputVariableName(top->signals[index].name);
 		}
 	}
 	printf(");\n");
@@ -243,12 +390,16 @@ static void _emitMain(SemanticCircuit * top) {
 		if (top->signals[index].type != OUTPUT_DECLARATION) {
 			continue;
 		}
-		printf("\t\tprintf(\"%s%%d\", state.%s);\n", first ? "" : " ", top->signals[index].name);
+		printf("\t\tprintf(\"%s%%d\", state.", first ? "" : " ");
+		_emitSignalFieldName(top->signals[index].name);
+		printf(");\n");
 		first = false;
 	}
 	printf("\t\tprintf(\"\\n\");\n");
 	printf("\t}\n");
-	printf("\tfree_%s(&state);\n", top->name);
+	printf("\t");
+	_emitFreeFunctionName(top->name);
+	printf("(&state);\n");
 	printf("\treturn 0;\n");
 	printf("}\n");
 }
@@ -262,17 +413,38 @@ void executeGenerator(CompilerState * compilerState) {
 	SemanticModel * model = compilerState->semanticModel;
 	printf("#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\n");
 	for (size_t index = 0; index < model->circuitCount; ++index) {
-		printf("typedef struct State_%s State_%s;\n", model->circuits[index].name, model->circuits[index].name);
+		printf("typedef struct ");
+		_emitStateTypeName(model->circuits[index].name);
+		printf(" ");
+		_emitStateTypeName(model->circuits[index].name);
+		printf(";\n");
 	}
 	printf("\n");
 	for (size_t index = 0; index < model->circuitCount; ++index) {
-		printf("static void init_%s(State_%s * state);\n", model->circuits[index].name, model->circuits[index].name);
-		printf("static void free_%s(State_%s * state);\n", model->circuits[index].name, model->circuits[index].name);
-		printf("static void settle_%s(State_%s * state);\n", model->circuits[index].name, model->circuits[index].name);
-		printf("static void tick_%s(State_%s * state", model->circuits[index].name, model->circuits[index].name);
+		printf("void ");
+		_emitInitFunctionName(model->circuits[index].name);
+		printf("(");
+		_emitStateTypeName(model->circuits[index].name);
+		printf(" * state);\n");
+		printf("void ");
+		_emitFreeFunctionName(model->circuits[index].name);
+		printf("(");
+		_emitStateTypeName(model->circuits[index].name);
+		printf(" * state);\n");
+		printf("void ");
+		_emitSettleFunctionName(model->circuits[index].name);
+		printf("(");
+		_emitStateTypeName(model->circuits[index].name);
+		printf(" * state);\n");
+		printf("void ");
+		_emitTickFunctionName(model->circuits[index].name);
+		printf("(");
+		_emitStateTypeName(model->circuits[index].name);
+		printf(" * state");
 		for (size_t signalIndex = 0; signalIndex < model->circuits[index].signalCount; ++signalIndex) {
 			if (model->circuits[index].signals[signalIndex].type == INPUT_DECLARATION) {
-				printf(", int in_%s", model->circuits[index].signals[signalIndex].name);
+				printf(", int ");
+				_emitInputVariableName(model->circuits[index].signals[signalIndex].name);
 			}
 		}
 		printf(");\n");
@@ -280,7 +452,9 @@ void executeGenerator(CompilerState * compilerState) {
 	printf("\n");
 	for (size_t index = 0; index < model->circuitCount; ++index) {
 		SemanticCircuit * circuit = &model->circuits[index];
-		printf("struct State_%s {\n", circuit->name);
+		printf("struct ");
+		_emitStateTypeName(circuit->name);
+		printf(" {\n");
 		_emitSignalFields(circuit);
 		_emitInstanceFields(circuit);
 		printf("};\n\n");

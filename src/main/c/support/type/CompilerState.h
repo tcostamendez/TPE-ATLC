@@ -12,11 +12,6 @@ typedef struct {
 	struct Program * abstractSyntaxTree;
 	struct SemanticModel * semanticModel;
 	const char * topCircuitName;
-
-	// TODO: Add a symbol table.
-	// TODO: Add a stack to handle nested scopes.
-	// TODO: Add more configuration.
-	// TODO: Add whatever you need.
 } CompilerState;
 
 #endif

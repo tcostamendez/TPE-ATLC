@@ -1,0 +1,8 @@
+circuit static {
+input auto, volatile;
+output return, sizeof;
+wire inline;
+inline = auto and volatile;
+return = inline;
+sizeof = auto or volatile;
+}

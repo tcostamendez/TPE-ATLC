@@ -10,9 +10,7 @@
 #include <string.h>
 
 /**
- * The main entry-point of the entire application. If you use "strtok" to
- * parse anything inside this project instead of using Flex and Bison, I will
- * find you, and I will kill you (Bryan Mills; "Taken", 2008).
+ * The main entry-point of the compiler.
  */
 const int main(const int length, const char ** arguments) {
 	LexicalAnalyzer * lexicalAnalyzer = createLexicalAnalyzer();

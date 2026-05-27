@@ -6,8 +6,11 @@
 
 Proyecto de compilador de ATLC desarrollado en C con Flex y Bison. El estado actual del repositorio corresponde a la **Etapa 3 (Backend)** del proyecto: frontend, análisis semántico y generación de simuladores C99 para un DSL de descripción de hardware orientado a circuitos booleanos secuenciales síncronos.
 
+Repositorio: https://github.com/tcostamendez/TPE-ATLC
+
 * [Alcance de la Etapa 3](#alcance-de-la-etapa-3)
 * [Resumen del lenguaje](#resumen-del-lenguaje)
+* [Formato del simulador generado](#formato-del-simulador-generado)
 * [Requisitos](#requisitos)
 * [Configuración](#configuración)
 * [Comandos](#comandos)
@@ -58,6 +61,32 @@ on rising_edge(clk) {
 	value <= next;
 }
 }
+```
+
+## Formato del simulador generado
+
+El compilador emite por `stdout` un programa C99 autocontenido. Ese programa lee por `stdin`:
+
+1. un entero `N`, que indica la cantidad de ciclos a simular;
+2. `N` filas con los valores booleanos de los `input` del circuito top, en orden de declaración.
+
+Después de cada ciclo imprime los `output` del circuito top, también en orden de declaración. Por ejemplo, para un circuito con entradas `a, b` y salidas `sum, carry`:
+
+```txt
+4
+0 0
+0 1
+1 0
+1 1
+```
+
+produce una línea de salida por ciclo:
+
+```txt
+0 0
+1 0
+1 0
+0 1
 ```
 
 ## Requisitos
@@ -113,6 +142,8 @@ También se puede elegir el circuito principal:
 LOGGING_LEVEL=ERROR .build/Flex-Bison-Compiler --top Main <programa >simulator.c
 ```
 
+Si no se indica `--top`, se usa como top el último circuito definido en el programa.
+
 ### Tests
 
 Corre la suite de aceptación/rechazo:
@@ -148,6 +179,8 @@ La suite de tests bajo `src/test/c` cubre sintaxis, semántica y generación.
 * Especificación de la Etapa 1: [doc/Especificacion-Stage1.pdf](doc/Especificacion-Stage1.pdf)
 * Notas de implementación de la Etapa 2: [doc/Stage2-Frontend.md](doc/Stage2-Frontend.md)
 * Informe de la Etapa 3: [doc/Informe-Stage3.md](doc/Informe-Stage3.md)
+
+El Markdown del informe de Stage 3 es la fuente canónica. El PDF debe exportarse desde ese contenido en el entorno de entrega.
 
 ## CI/CD
 
