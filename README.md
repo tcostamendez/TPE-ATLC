@@ -93,7 +93,7 @@ produce una línea de salida por ciclo:
 
 * [Docker](https://www.docker.com/)
 
-El entorno previsto para compilar y correr los tests es el setup de Docker que viene con el repositorio. Esto es importante porque el host puede tener una versión antigua de `bison` o no tener `cmake` instalado.
+El entorno previsto para compilar y correr los tests es el setup de Docker que viene con el repositorio. Esta es la fuente de verdad de la entrega: el host puede tener una versión antigua de `bison`, no tener `cmake` instalado o no poder ejecutar binarios Linux generados dentro del contenedor.
 
 ## Configuración
 
@@ -146,17 +146,19 @@ Si no se indica `--top`, se usa como top el último circuito definido en el prog
 
 ### Tests
 
-Corre la suite de aceptación/rechazo:
+Dentro del contenedor, corre la suite de aceptación/rechazo:
 
 ```bash
 src/main/bash/test.sh
 ```
 
-Corre fixtures que compilan y ejecutan simuladores generados:
+Dentro del contenedor, corre los fixtures que compilan y ejecutan simuladores generados:
 
 ```bash
 src/main/bash/codegen-test.sh
 ```
+
+Para validar la Etapa 3 completa se deben ejecutar ambos scripts luego del build, ya que `test.sh` cubre frontend y semántica, mientras que `codegen-test.sh` cubre generación de código y runtime.
 
 ### Detener
 
@@ -167,7 +169,11 @@ docker compose down
 
 ## Tests
 
-La suite de tests bajo `src/test/c` cubre sintaxis, semántica y generación.
+La suite de tests bajo `src/test/c` cubre sintaxis, semántica y generación. La validación reproducible de entrega es:
+
+```bash
+docker compose run --rm compiler sh -lc 'src/main/bash/build.sh && src/main/bash/test.sh && src/main/bash/codegen-test.sh'
+```
 
 * `src/test/c/accept`: programas válidos que deben generar C
 * `src/test/c/reject`: programas inválidos que deben fallar en frontend o semántica

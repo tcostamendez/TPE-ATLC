@@ -1,5 +1,20 @@
 # NotAndOr - Informe Stage III
 
+## Tabla de Contenidos
+
+1. Introducción
+2. Modelo Computacional
+   1. Dominio
+   2. Lenguaje
+3. Implementación
+   1. Frontend
+   2. Backend
+   3. Dificultades Encontradas
+4. Futuras Extensiones
+5. Conclusiones
+6. Referencias
+7. Bibliografía
+
 ## 1. Introducción
 
 NotAndOr es un DSL para describir y simular circuitos lógicos booleanos secuenciales síncronos. El compilador recibe un programa por `stdin`, construye un AST con Flex/Bison, aplica validaciones semánticas propias del dominio y genera un simulador C99 autocontenido.
@@ -21,7 +36,7 @@ El lenguaje mantiene una separación explícita entre:
 
 No se modelan retardos físicos, señales analógicas, buses multibit ni múltiples dominios de clock con garantías temporales. Todas las señales son booleanas.
 
-### 2.2. Construcciones del Lenguaje
+### 2.2. Lenguaje
 
 Las construcciones implementadas son:
 
@@ -61,9 +76,17 @@ value <= next;
 }
 ```
 
-## 3. Análisis Semántico
+## 3. Implementación
 
-La fase semántica construye una tabla global de circuitos y una tabla de señales por circuito. Sobre ese modelo valida las reglas que no pueden resolverse solamente con la gramática:
+### 3.1. Frontend
+
+El frontend conserva la arquitectura Flex/Bison del proyecto base. Flex reconoce palabras reservadas, identificadores, operadores, comentarios y símbolos de puntuación. Bison consume ese stream de tokens, aplica precedencia para las expresiones booleanas y construye un AST con nodos para programas, circuitos, declaraciones, asignaciones combinacionales, bloques secuenciales, instancias y expresiones.
+
+El AST se mantiene como frontera entre frontend y backend. Las listas se representan con nodos enlazados para acompañar el estilo del template original en C y simplificar la liberación explícita de memoria.
+
+### 3.2. Backend
+
+La primera fase del backend es el análisis semántico. Construye una tabla global de circuitos y una tabla de señales por circuito. Sobre ese modelo valida las reglas que no pueden resolverse solamente con la gramática:
 
 - no puede haber circuitos ni señales redeclaradas;
 - toda señal usada debe estar declarada;
@@ -94,9 +117,7 @@ AndGate(a=x, b=y) -> (out=z);
 }
 ```
 
-## 4. Generación de Código y Runtime
-
-El backend genera un programa C99 completo. El runtime queda incluido en el código emitido: estructuras de estado, funciones de inicialización, liberación, evaluación combinacional, avance de ciclo y `main`.
+La fase final genera un programa C99 completo. El runtime queda incluido en el código emitido: estructuras de estado, funciones de inicialización, liberación, evaluación combinacional, avance de ciclo y `main`.
 
 El simulador generado usa el siguiente contrato de entrada:
 
@@ -125,37 +146,27 @@ La simulación de cada ciclo realiza:
 
 Para evitar colisiones con palabras reservadas de C, el generador no emite nombres del DSL directamente como identificadores C. En su lugar usa prefijos internos para tipos, funciones, campos, entradas y señales previas.
 
-## 5. Comandos de Uso
-
-Código 4: compilación del proyecto dentro del entorno previsto.
+Los comandos principales son:
 
 ```bash
 docker compose run --rm compiler src/main/bash/build.sh
-```
-
-Código 5: generación de un simulador C99.
-
-```bash
 LOGGING_LEVEL=ERROR .build/Flex-Bison-Compiler <programa >simulator.c
-```
-
-Código 6: selección explícita del circuito principal.
-
-```bash
 LOGGING_LEVEL=ERROR .build/Flex-Bison-Compiler --top Main <programa >simulator.c
 ```
 
 Si no se especifica `--top`, el compilador usa como top el último circuito definido.
 
-## 6. Casos de Prueba
+La suite incluye programas aceptados, programas rechazados y fixtures de simulación. Los casos de aceptación cubren compuertas combinacionales, half-adder, flip-flops, registros, composición, precedencia, comentarios, aliases simbólicos y flancos descendentes. Los casos de rechazo cubren errores léxicos, errores sintácticos y errores semánticos. Los fixtures de generación compilan el C emitido con `gcc -std=c99 -Wall -Wextra` y ejecutan el simulador comparando su salida contra archivos esperados.
 
-La suite incluye programas aceptados, programas rechazados y fixtures de simulación. Los casos de aceptación cubren compuertas combinacionales, half-adder, flip-flops, registros, composición, precedencia, comentarios, aliases simbólicos y flancos descendentes.
+### 3.3. Dificultades Encontradas
 
-Los casos de rechazo cubren errores léxicos, errores sintácticos y errores semánticos: señales no declaradas, redeclaraciones, asignaciones inválidas, clocks inválidos, instancias inexistentes, puertos inválidos o duplicados, ciclos combinacionales y recursión por instancias.
+La migración desde el lenguaje aritmético del template hacia un DSL de circuitos obligó a reemplazar el modelo de AST y a mantener conectadas las fases existentes sin romper el flujo general del compilador. También fue necesario separar con claridad los errores sintácticos de los errores semánticos, porque muchos programas inválidos del dominio sí son parseables.
 
-Los fixtures de generación compilan el C emitido con `gcc -std=c99 -Wall -Wextra` y ejecutan el simulador comparando su salida contra archivos esperados.
+Otra dificultad fue definir una simulación suficientemente simple para la entrega pero útil para circuitos secuenciales. La solución elegida genera simuladores C99 autocontenidos y evalúa la lógica combinacional de manera iterativa, mientras que el análisis semántico rechaza ciclos combinacionales para evitar comportamientos indefinidos.
 
-## 7. Futuras Extensiones
+Finalmente, la validación local depende del toolchain. El host puede no tener `cmake` o puede incluir un `bison` demasiado antiguo para las directivas utilizadas. Por ese motivo, el entorno de referencia del proyecto es Docker/Ubuntu y los scripts de build y test están pensados para ejecutarse allí.
+
+## 4. Futuras Extensiones
 
 - Soporte para buses multibit.
 - Inicialización explícita de registros.
@@ -163,13 +174,18 @@ Los fixtures de generación compilan el C emitido con `gcc -std=c99 -Wall -Wextr
 - Mejor ordenamiento topológico para reducir iteraciones de estabilización combinacional.
 - Reportes semánticos con ubicación exacta del AST.
 
-## 8. Conclusiones
+## 5. Conclusiones
 
 Stage III transforma el proyecto en un compilador funcional para simulación. La etapa semántica captura errores estructurales relevantes del dominio y la generación C99 produce simuladores ejecutables sin dependencias externas al compilador de C.
 
-## 9. Referencias
+El resultado mantiene la arquitectura pedida por la materia, conserva Flex/Bison como frontend y completa el backend con validaciones de dominio, selección de circuito top, generación de código y fixtures de runtime.
+
+## 6. Referencias
 
 - Consigna del Proyecto Especial, 12 de marzo de 2026.
 - Material de cátedra: Análisis Semántico, Generación de Código y Runtime.
-- Aho, Lam, Sethi y Ullman. Compilers: Principles, Techniques, and Tools.
 - IEEE. Standard for Verilog Hardware Description Language.
+
+## 7. Bibliografía
+
+- Aho, Lam, Sethi y Ullman. Compilers: Principles, Techniques, and Tools.
