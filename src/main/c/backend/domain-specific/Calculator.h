@@ -19,6 +19,7 @@ struct SemanticSignal {
 	DeclarationType type;
 	bool combinationallyAssigned;
 	bool sequentiallyAssigned;
+	bool usedAsSource;
 };
 
 struct SemanticCircuit {

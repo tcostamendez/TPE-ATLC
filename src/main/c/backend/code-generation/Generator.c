@@ -44,6 +44,10 @@ static void _emitInstanceFieldName(size_t index) {
 	printf("inst_%zu", index);
 }
 
+static void _emitNextRegisterVariableName(size_t blockIndex, size_t assignmentIndex) {
+	printf("next_%zu_%zu", blockIndex, assignmentIndex);
+}
+
 void _shutdownGeneratorModule() {
 	if (_logger != NULL) {
 		logDebugging(_logger, "Destroying module: Generator...");
@@ -285,6 +289,24 @@ static void _emitTickFunction(SemanticCircuit * circuit) {
 	printf("\t");
 	_emitSettleFunctionName(circuit->name);
 	printf("(state);\n");
+	size_t blockIndex = 0;
+	for (CircuitItemList * node = circuit->ast->items; node != NULL; node = node->next) {
+		if (node->item->type != STATEMENT_ITEM || node->item->statement->type != CLOCK_BLOCK_STATEMENT) {
+			continue;
+		}
+		ClockBlock * block = node->item->statement->clockBlock;
+		size_t assignmentIndex = 0;
+		for (SequentialAssignmentList * assignmentNode = block->assignments; assignmentNode != NULL; assignmentNode = assignmentNode->next) {
+			printf("\tint ");
+			_emitNextRegisterVariableName(blockIndex, assignmentIndex);
+			printf(" = state->");
+			_emitSignalFieldName(assignmentNode->assignment->target);
+			printf(";\n");
+			++assignmentIndex;
+		}
+		++blockIndex;
+	}
+	blockIndex = 0;
 	for (CircuitItemList * node = circuit->ast->items; node != NULL; node = node->next) {
 		if (node->item->type != STATEMENT_ITEM || node->item->statement->type != CLOCK_BLOCK_STATEMENT) {
 			continue;
@@ -306,23 +328,37 @@ static void _emitTickFunction(SemanticCircuit * circuit) {
 		}
 		size_t assignmentIndex = 0;
 		for (SequentialAssignmentList * assignmentNode = block->assignments; assignmentNode != NULL; assignmentNode = assignmentNode->next) {
-			printf("\t\tint next_%zu = ", assignmentIndex);
+			printf("\t\t");
+			_emitNextRegisterVariableName(blockIndex, assignmentIndex);
+			printf(" = ");
 			_emitExpression(assignmentNode->assignment->expression);
 			printf(" ? 1 : 0;\n");
 			++assignmentIndex;
 		}
-		assignmentIndex = 0;
-		for (SequentialAssignmentList * assignmentNode = block->assignments; assignmentNode != NULL; assignmentNode = assignmentNode->next) {
-			printf("\t\tstate->");
-			_emitSignalFieldName(assignmentNode->assignment->target);
-			printf(" = next_%zu;\n", assignmentIndex++);
-		}
 		printf("\t}\n");
+		++blockIndex;
 	}
 	for (CircuitItemList * node = circuit->ast->items; node != NULL; node = node->next) {
 		if (node->item->type == STATEMENT_ITEM && node->item->statement->type == INSTANCE_STATEMENT) {
 			_emitInstanceTick(node->item->statement->instance, _instanceIndex(circuit->ast->items, node->item->statement));
 		}
+	}
+	blockIndex = 0;
+	for (CircuitItemList * node = circuit->ast->items; node != NULL; node = node->next) {
+		if (node->item->type != STATEMENT_ITEM || node->item->statement->type != CLOCK_BLOCK_STATEMENT) {
+			continue;
+		}
+		ClockBlock * block = node->item->statement->clockBlock;
+		size_t assignmentIndex = 0;
+		for (SequentialAssignmentList * assignmentNode = block->assignments; assignmentNode != NULL; assignmentNode = assignmentNode->next) {
+			printf("\tstate->");
+			_emitSignalFieldName(assignmentNode->assignment->target);
+			printf(" = ");
+			_emitNextRegisterVariableName(blockIndex, assignmentIndex);
+			printf(";\n");
+			++assignmentIndex;
+		}
+		++blockIndex;
 	}
 	printf("\t");
 	_emitSettleFunctionName(circuit->name);

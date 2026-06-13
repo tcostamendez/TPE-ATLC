@@ -64,6 +64,7 @@ run_codegen_test "05-falling-edge" "src/test/c/accept/20-falling-edge"
 run_codegen_test "06-composition" "src/test/c/accept/06-composition"
 run_codegen_test "07-c-keyword-identifiers" "src/test/c/accept/21-c-keyword-identifiers"
 run_codegen_test "08-explicit-top" "src/test/c/accept/22-explicit-top" "First"
+run_codegen_test "09-hierarchical-sequential" "src/test/c/accept/23-hierarchical-sequential"
 echo ""
 echo "All done."
 exit $STATUS

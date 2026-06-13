@@ -110,6 +110,7 @@ static bool _appendSignal(SemanticCircuit * circuit, const char * name, Declarat
 	signal->type = type;
 	signal->combinationallyAssigned = false;
 	signal->sequentiallyAssigned = false;
+	signal->usedAsSource = false;
 	if (signal->name == NULL) {
 		logError(_logger, "Semantic analyzer ran out of memory while copying a signal name.");
 		return false;
@@ -147,6 +148,19 @@ static bool _validateExpressionIdentifier(const char * identifier, void * contex
 		return false;
 	}
 	return true;
+}
+
+static bool _markSourceIdentifier(const char * identifier, void * context) {
+	SemanticCircuit * circuit = context;
+	SemanticSignal * signal = findSemanticSignal(circuit, identifier);
+	if (signal != NULL) {
+		signal->usedAsSource = true;
+	}
+	return true;
+}
+
+static void _markExpressionSources(SemanticCircuit * circuit, Expression * expression) {
+	_forEachExpressionIdentifier(expression, _markSourceIdentifier, circuit);
 }
 
 static bool _connectionPortExists(SemanticCircuit * child, DeclarationType type, const char * portName) {
@@ -281,6 +295,7 @@ static bool _validateCircuit(SemanticModel * model, SemanticCircuit * circuit) {
 				graph.signalCount = _signalIndex(circuit, target->name);
 				_forEachExpressionIdentifier(assignment->expression, _addDependency, &graph);
 			}
+			_markExpressionSources(circuit, assignment->expression);
 			ok = _forEachExpressionIdentifier(assignment->expression, _validateExpressionIdentifier, circuit) && ok;
 		}
 		else if (statement->type == CLOCK_BLOCK_STATEMENT) {
@@ -308,6 +323,7 @@ static bool _validateCircuit(SemanticModel * model, SemanticCircuit * circuit) {
 					}
 					target->sequentiallyAssigned = true;
 				}
+				_markExpressionSources(circuit, assignment->expression);
 				ok = _forEachExpressionIdentifier(assignment->expression, _validateExpressionIdentifier, circuit) && ok;
 			}
 		}
@@ -321,6 +337,12 @@ static bool _validateCircuit(SemanticModel * model, SemanticCircuit * circuit) {
 			}
 			ok = _validateConnectionSet(circuit, child, instance->inputConnections, INPUT_DECLARATION) && ok;
 			ok = _validateConnectionSet(circuit, child, instance->outputConnections, OUTPUT_DECLARATION) && ok;
+			for (ConnectionList * inputNode = instance->inputConnections; inputNode != NULL; inputNode = inputNode->next) {
+				SemanticSignal * source = findSemanticSignal(circuit, inputNode->connection->signalName);
+				if (source != NULL) {
+					source->usedAsSource = true;
+				}
+			}
 			for (ConnectionList * outputNode = instance->outputConnections; outputNode != NULL; outputNode = outputNode->next) {
 				size_t target = _signalIndex(circuit, outputNode->connection->signalName);
 				if (target == (size_t) -1) {
@@ -338,6 +360,10 @@ static bool _validateCircuit(SemanticModel * model, SemanticCircuit * circuit) {
 		SemanticSignal * signal = &circuit->signals[index];
 		if (signal->type == OUTPUT_DECLARATION && !signal->combinationallyAssigned) {
 			logError(_logger, "Semantic error in circuit '%s': output '%s' is not determined.", circuit->name, signal->name);
+			ok = false;
+		}
+		if (signal->type == WIRE_DECLARATION && signal->usedAsSource && !signal->combinationallyAssigned) {
+			logError(_logger, "Semantic error in circuit '%s': wire '%s' is used as a source but is not determined.", circuit->name, signal->name);
 			ok = false;
 		}
 	}

@@ -94,6 +94,7 @@ La primera fase del backend es el análisis semántico. Construye una tabla glob
 - `<=` solo puede asignar registros dentro de bloques secuenciales;
 - un registro no puede tener múltiples definiciones secuenciales;
 - una salida debe quedar determinada;
+- un `wire` usado como fuente debe quedar determinado;
 - una instancia debe referenciar un circuito existente;
 - las conexiones de instancia deben respetar puertos, duplicados y cantidad de entradas/salidas;
 - una salida de instancia no puede manejar una entrada ni un registro del circuito padre;
@@ -140,8 +141,8 @@ La simulación de cada ciclo realiza:
 1. normalización de entradas a valores booleanos;
 2. evaluación de lógica combinacional;
 3. detección de flancos ascendentes y descendentes;
-4. cálculo de próximos valores de registros;
-5. actualización de registros;
+4. cálculo de próximos valores de registros usando el estado previo de toda la jerarquía;
+5. actualización de registros locales e instanciados;
 6. evaluación final de outputs.
 
 Para evitar colisiones con palabras reservadas de C, el generador no emite nombres del DSL directamente como identificadores C. En su lugar usa prefijos internos para tipos, funciones, campos, entradas y señales previas.
