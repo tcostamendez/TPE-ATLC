@@ -1,0 +1,7 @@
+circuit Broken {
+input a;
+output y;
+wire x;
+x = y and a;
+y = x or a;
+}

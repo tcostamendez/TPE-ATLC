@@ -1,0 +1,5 @@
+circuit Broken {
+input a;
+output y;
+y = a and missing;
+}

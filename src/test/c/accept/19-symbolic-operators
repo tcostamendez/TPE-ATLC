@@ -1,0 +1,5 @@
+circuit SymbolicOperators {
+input a, b, c;
+output y;
+y = a . b + c;
+}

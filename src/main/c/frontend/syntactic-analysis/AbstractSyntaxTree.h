@@ -14,6 +14,7 @@ typedef enum StatementType StatementType;
 typedef enum UnaryOperatorType UnaryOperatorType;
 typedef enum BinaryOperatorType BinaryOperatorType;
 typedef enum ExpressionType ExpressionType;
+typedef enum EdgeType EdgeType;
 
 typedef struct IdentifierList IdentifierList;
 typedef struct Connection Connection;
@@ -64,6 +65,11 @@ enum ExpressionType {
 	IDENTIFIER_EXPRESSION,
 	UNARY_EXPRESSION,
 	BINARY_EXPRESSION
+};
+
+enum EdgeType {
+	RISING_EDGE_EVENT,
+	FALLING_EDGE_EVENT
 };
 
 struct IdentifierList {
@@ -121,6 +127,7 @@ struct SequentialAssignmentList {
 };
 
 struct ClockBlock {
+	EdgeType edgeType;
 	char * clockSignal;
 	SequentialAssignmentList * assignments;
 };

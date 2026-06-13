@@ -264,7 +264,7 @@ SequentialAssignmentList * AppendSequentialAssignmentSemanticAction(SequentialAs
 	return _appendNode(assignmentList, nextNode, offsetof(SequentialAssignmentList, next), offsetof(SequentialAssignmentList, tail));
 }
 
-ClockBlock * ClockBlockSemanticAction(char * clockSignal, SequentialAssignmentList * assignments) {
+ClockBlock * ClockBlockSemanticAction(EdgeType edgeType, char * clockSignal, SequentialAssignmentList * assignments) {
 	_logSyntacticAnalyzerAction(__FUNCTION__);
 	if (clockSignal == NULL || assignments == NULL) {
 		free(clockSignal);
@@ -279,6 +279,7 @@ ClockBlock * ClockBlockSemanticAction(char * clockSignal, SequentialAssignmentLi
 		return NULL;
 	}
 
+	clockBlock->edgeType = edgeType;
 	clockBlock->clockSignal = clockSignal;
 	clockBlock->assignments = assignments;
 	return clockBlock;

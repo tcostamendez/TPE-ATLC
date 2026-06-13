@@ -1,0 +1,7 @@
+circuit Broken {
+input a;
+output y;
+reg state;
+state = a;
+y = state;
+}

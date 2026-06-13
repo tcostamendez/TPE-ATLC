@@ -26,7 +26,7 @@ Expression * BinaryExpressionSemanticAction(Expression * leftExpression, Express
 SequentialAssignment * SequentialAssignmentSemanticAction(char * target, Expression * expression);
 SequentialAssignmentList * SequentialAssignmentListSemanticAction(SequentialAssignment * assignment);
 SequentialAssignmentList * AppendSequentialAssignmentSemanticAction(SequentialAssignmentList * assignmentList, SequentialAssignment * assignment);
-ClockBlock * ClockBlockSemanticAction(char * clockSignal, SequentialAssignmentList * assignments);
+ClockBlock * ClockBlockSemanticAction(EdgeType edgeType, char * clockSignal, SequentialAssignmentList * assignments);
 Instance * InstanceSemanticAction(char * circuitName, ConnectionList * inputConnections, ConnectionList * outputConnections);
 Statement * CombinationalAssignmentStatementSemanticAction(char * target, Expression * expression);
 Statement * ClockBlockStatementSemanticAction(ClockBlock * clockBlock);

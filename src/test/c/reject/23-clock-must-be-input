@@ -1,0 +1,10 @@
+circuit Broken {
+input a;
+output y;
+wire clk;
+reg state;
+y = a;
+on rising_edge(clk) {
+state <= a;
+}
+}

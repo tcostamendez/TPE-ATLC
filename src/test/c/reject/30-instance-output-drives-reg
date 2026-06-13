@@ -1,0 +1,13 @@
+circuit Buffer {
+input a;
+output y;
+y = a;
+}
+
+circuit Main {
+input x;
+output z;
+reg state;
+Buffer(a=x) -> (y=state);
+z = state;
+}

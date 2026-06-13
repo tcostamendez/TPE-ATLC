@@ -1,0 +1,7 @@
+circuit Main {
+input a;
+output out;
+wire tmp;
+
+out = tmp;
+}

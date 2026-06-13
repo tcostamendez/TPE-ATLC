@@ -40,6 +40,7 @@ identifier			[_[:alpha:]][_[:alnum:]]*
 "reg"								{ return SymbolLexemeAction(REG); }
 "on"								{ return SymbolLexemeAction(ON); }
 "rising_edge"						{ return SymbolLexemeAction(RISING_EDGE); }
+"falling_edge"						{ return SymbolLexemeAction(FALLING_EDGE); }
 "and"								{ return SymbolLexemeAction(AND); }
 "or"								{ return SymbolLexemeAction(OR); }
 "xor"								{ return SymbolLexemeAction(XOR); }
@@ -48,6 +49,8 @@ identifier			[_[:alpha:]][_[:alnum:]]*
 "<="								{ return SymbolLexemeAction(NEXT_ASSIGN); }
 "->"								{ return SymbolLexemeAction(ARROW); }
 "="									{ return SymbolLexemeAction(ASSIGN); }
+"."									{ return SymbolLexemeAction(AND); }
+"+"									{ return SymbolLexemeAction(OR); }
 "{"									{ return SymbolLexemeAction(OPEN_BRACE); }
 "}"									{ return SymbolLexemeAction(CLOSE_BRACE); }
 "("									{ return SymbolLexemeAction(OPEN_PARENTHESIS); }

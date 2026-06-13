@@ -1,0 +1,24 @@
+circuit DFF {
+input d, clk;
+output q;
+reg state;
+
+q = state;
+
+on rising_edge(clk) {
+state <= d;
+}
+}
+
+circuit Main {
+input in, clk;
+output parent, child;
+reg state;
+
+parent = state;
+DFF(d=state, clk=clk) -> (q=child);
+
+on rising_edge(clk) {
+state <= in;
+}
+}
