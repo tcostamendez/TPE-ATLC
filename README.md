@@ -1,6 +1,6 @@
-[![✗](https://img.shields.io/badge/Release-v2.0.0-ffb600.svg?style=for-the-badge)](https://github.com/tcostamendez/TPE-ATLC/releases)
+[![Entrega](https://img.shields.io/badge/Entrega-Stage%20III-ffb600.svg?style=for-the-badge)](https://github.com/tcostamendez/TPE-ATLC/tree/development)
 
-[![✗](https://github.com/tcostamendez/TPE-ATLC/actions/workflows/pipeline.yaml/badge.svg?branch=production)](https://github.com/tcostamendez/TPE-ATLC/actions/workflows/pipeline.yaml)
+[![CI](https://github.com/tcostamendez/TPE-ATLC/actions/workflows/pipeline.yaml/badge.svg?branch=development)](https://github.com/tcostamendez/TPE-ATLC/actions/workflows/pipeline.yaml)
 
 # TPE-ATLC
 
@@ -184,9 +184,9 @@ docker compose run --rm compiler sh -lc 'src/main/bash/build.sh && src/main/bash
 
 * Especificación de la Etapa 1: [doc/Especificacion-Stage1.pdf](doc/Especificacion-Stage1.pdf)
 * Notas de implementación de la Etapa 2: [doc/Stage2-Frontend.md](doc/Stage2-Frontend.md)
-* Informe de la Etapa 3: [doc/Informe-Stage3.md](doc/Informe-Stage3.md)
+* Informe de la Etapa 3: [doc/Informe-Stage3.md](doc/Informe-Stage3.md) / [doc/Informe-Stage3.pdf](doc/Informe-Stage3.pdf)
 
-El Markdown del informe de Stage 3 es la fuente canónica. El PDF debe exportarse desde ese contenido en el entorno de entrega.
+El Markdown del informe de Stage 3 es la fuente editable. El PDF incluido corresponde a la versión preparada para la entrega.
 
 ## CI/CD
 
